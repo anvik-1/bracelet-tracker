@@ -1,0 +1,21 @@
+{
+  "query": "CREATE TABLE `bracelets` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`userId` int NOT NULL,\n\t`name` varchar(255) NOT NULL,\n\t`patternName` varchar(255),\n\t`patternNumber` varchar(100),\n\t`patternUrl` text,\n\t`colors` json DEFAULT ('[]'),\n\t`materials` varchar(500),\n\t`dateMade` timestamp,\n\t`timeTakenMinutes` int,\n\t`difficulty` enum('beginner','easy','medium','hard','expert'),\n\t`notes` text,\n\t`rating` int,\n\t`outcome` enum('perfect','good','okay','needs_improvement','failed'),\n\t`photoUrl` text,\n\t`photoKey` varchar(500),\n\t`finalLengthCm` float,\n\t`stringLengthCm` float,\n\t`numberOfStrings` int,\n\t`createdAt` timestamp NOT NULL DEFAULT (now()),\n\t`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n\tCONSTRAINT `bracelets_id` PRIMARY KEY(`id`)\n);\n\nCREATE TABLE `thread_library` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`userId` int NOT NULL,\n\t`colorName` varchar(100) NOT NULL,\n\t`colorHex` varchar(7) NOT NULL,\n\t`brand` varchar(100),\n\t`colorCode` varchar(50),\n\t`quantity` int DEFAULT 1,\n\t`notes` text,\n\t`createdAt` timestamp NOT NULL DEFAULT (now()),\n\t`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n\tCONSTRAINT `thread_library_id` PRIMARY KEY(`id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway04.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 2iPZbqnaUZTWG3D.4c2fb0210468 --database F2GxBnmKni5dPitW4nRju6 --execute CREATE TABLE `bracelets` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`userId` int NOT NULL,\n\t`name` varchar(255) NOT NULL,\n\t`patternName` varchar(255),\n\t`patternNumber` varchar(100),\n\t`patternUrl` text,\n\t`colors` json DEFAULT ('[]'),\n\t`materials` varchar(500),\n\t`dateMade` timestamp,\n\t`timeTakenMinutes` int,\n\t`difficulty` enum('beginner','easy','medium','hard','expert'),\n\t`notes` text,\n\t`rating` int,\n\t`outcome` enum('perfect','good','okay','needs_improvement','failed'),\n\t`photoUrl` text,\n\t`photoKey` varchar(500),\n\t`finalLengthCm` float,\n\t`stringLengthCm` float,\n\t`numberOfStrings` int,\n\t`createdAt` timestamp NOT NULL DEFAULT (now()),\n\t`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n\tCONSTRAINT `bracelets_id` PRIMARY KEY(`id`)\n);\n\nCREATE TABLE `thread_library` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`userId` int NOT NULL,\n\t`colorName` varchar(100) NOT NULL,\n\t`colorHex` varchar(7) NOT NULL,\n\t`brand` varchar(100),\n\t`colorCode` varchar(50),\n\t`quantity` int DEFAULT 1,\n\t`notes` text,\n\t`createdAt` timestamp NOT NULL DEFAULT (now()),\n\t`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n\tCONSTRAINT `thread_library_id` PRIMARY KEY(`id`)\n);",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1064 (42000) at line 1: You have an error in your SQL syntax; check the manual that corresponds to your TiDB version for the right syntax to use line 8 column 29 near \"'[]'),",
+    "\t`materials` varchar(500),",
+    "\t`dateMade` timestamp,",
+    "\t`timeTakenMinutes` int,",
+    "\t`difficulty` enum('beginner','easy','medium','hard','expert'),",
+    "\t`notes` text,",
+    "\t`rating` int,",
+    "\t`outcome` enum('perfect','good','okay','needs_improvement','failed'),",
+    "\t`photoUrl` text,",
+    "\t`photoKey` varchar(500),",
+    "\t`finalLengthCm` float,",
+    "\t`stringLengthCm` float,",
+    "\t`numberOfStrings` int,",
+    "\t`c"
+  ]
+}
