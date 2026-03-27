@@ -1,0 +1,41 @@
+BraceletBook Pattern Research - Complete Findings
+
+URL Pattern: https://www.braceletbook.com/patterns/normal/{id}/
+
+Image URLs (deterministic from pattern ID):
+- Preview image (bracelet strip): https://media.braceletbookcdn.com/patterns/000/000/{aaa}/{bbb}/{padded12}/preview.png
+- Pattern diagram: https://media.braceletbookcdn.com/patterns/000/000/{aaa}/{bbb}/{padded12}/pattern.png
+- Small preview: https://media.braceletbookcdn.com/patterns/000/000/{aaa}/{bbb}/{padded12}/preview_small.png
+- SVG versions also available at braceletbook.com/media/patterns/...
+
+Where for pattern 207002:
+  aaa = 207, bbb = 002, padded12 = 000000207002
+
+HTML Structure for scraping:
+- div.pattern_dimensions > div.data = "4x16" (rows x columns)
+- div.pattern_strings > div.data = "8" (number of strings)
+- div.pattern_colors > div.data = "3" (number of colors)
+- div.pattern_id_added_by contains pattern ID and author
+
+SVG Pattern Data:
+- The SVG contains color definitions in CSS: .s1-a{stroke:#0c5aad} .kk-a{fill:#0c5aad} etc.
+- Colors are labeled a, b, c etc. with hex values
+- String paths are defined as s00, s01, s10, s11, s20, s21, s30, s31 (8 strings = 4 pairs)
+- Each knot is an ellipse with class kk-{color_letter}
+- Knot types: #kf = forward knot, #kb = backward knot
+- Row numbers are in text elements
+- Total knots can be counted from ellipse elements
+- Each string's knot count can be determined from the knot elements
+
+For string calculator:
+- Dimensions "4x16" means 4 rows x 16 columns of knots (but need to verify)
+- Actually looking at the SVG, rows go from 1 to 16 with alternating 4 and 3 knots per row
+- Total knots = count of all <ellipse> elements with class kk-*
+- Knots per string can be computed by tracking which string makes each knot
+
+Key insight: The SVG pattern data contains EVERYTHING needed:
+1. Colors with hex values
+2. Number of strings (from path definitions)
+3. Number of rows (from row labels)
+4. Total knots (from ellipse count)
+5. Knot types (forward/backward from #kf/#kb references)

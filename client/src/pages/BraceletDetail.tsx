@@ -114,18 +114,41 @@ export default function BraceletDetail() {
       {(bracelet.patternNumber || bracelet.patternName) && (
         <Card>
           <CardHeader><CardTitle className="text-base">Pattern Reference</CardTitle></CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="space-y-4">
             {bracelet.patternNumber && (
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Pattern #:</span>
-                <span className="font-medium">{bracelet.patternNumber}</span>
-                {bracelet.patternUrl && (
-                  <a href={bracelet.patternUrl} target="_blank" rel="noopener noreferrer"
-                    className="text-primary hover:text-primary/80 inline-flex items-center gap-1 text-sm">
+              <>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">Pattern #:</span>
+                  <span className="font-medium">{bracelet.patternNumber}</span>
+                  <a
+                    href={bracelet.patternUrl || `https://www.braceletbook.com/patterns/normal/${bracelet.patternNumber}/`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary hover:text-primary/80 inline-flex items-center gap-1 text-sm"
+                  >
                     View on BraceletBook <ExternalLink className="h-3 w-3" />
                   </a>
-                )}
-              </div>
+                </div>
+                {/* Pattern preview from BraceletBook */}
+                <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+                  <div className="overflow-x-auto">
+                    <img
+                      src={`https://media.braceletbookcdn.com/patterns/000/000/${bracelet.patternNumber.padStart(12, '0').slice(6,9)}/${bracelet.patternNumber.padStart(12, '0').slice(9,12)}/${bracelet.patternNumber.padStart(12, '0')}/preview.png`}
+                      alt={`Pattern #${bracelet.patternNumber} preview`}
+                      className="h-12 w-auto max-w-full object-contain"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    />
+                  </div>
+                  <div className="overflow-x-auto">
+                    <img
+                      src={`https://media.braceletbookcdn.com/patterns/000/000/${bracelet.patternNumber.padStart(12, '0').slice(6,9)}/${bracelet.patternNumber.padStart(12, '0').slice(9,12)}/${bracelet.patternNumber.padStart(12, '0')}/pattern.png`}
+                      alt={`Pattern #${bracelet.patternNumber} diagram`}
+                      className="max-h-64 w-auto max-w-full object-contain"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    />
+                  </div>
+                </div>
+              </>
             )}
             {bracelet.patternName && (
               <div className="flex items-center gap-2">

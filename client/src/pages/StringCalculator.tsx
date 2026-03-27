@@ -1,4 +1,3 @@
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -9,79 +8,47 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Scissors, Calculator, Info } from "lucide-react";
-import { useState, useMemo } from "react";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
+import { Scissors, Calculator, ExternalLink, Loader2, AlertCircle } from "lucide-react";
+import { useState } from "react";
+import { trpc } from "@/lib/trpc";
+import { Button } from "@/components/ui/button";
 
 export default function StringCalculator() {
+  const [patternId, setPatternId] = useState("");
   const [desiredLength, setDesiredLength] = useState("");
-  const [totalKnots, setTotalKnots] = useState("");
-  const [knotsPerString, setKnotsPerString] = useState("");
-  const [numberOfStrings, setNumberOfStrings] = useState("");
-  const [knotType, setKnotType] = useState("forward");
   const [unit, setUnit] = useState("cm");
 
-  // Knot consumption factors (cm per knot for the knotting string)
-  const knotFactors: Record<string, number> = {
-    forward: 0.3,
-    backward: 0.3,
-    forward_backward: 0.35,
-    backward_forward: 0.35,
-    chinese: 0.5,
-  };
+  const cleanPatternId = patternId.replace(/^#/, "").replace(/\D/g, "");
+  const lengthNum = parseFloat(desiredLength);
+  const lengthCm = unit === "inches" ? lengthNum * 2.54 : lengthNum;
 
-  const result = useMemo(() => {
-    const length = parseFloat(desiredLength);
-    const knots = parseInt(totalKnots);
-    const perString = parseInt(knotsPerString);
-    const strings = parseInt(numberOfStrings);
+  const canCalculate = cleanPatternId.length > 0 && lengthNum > 0;
 
-    if (!length || length <= 0) return null;
+  const { data: calcResult, isLoading, error } = trpc.pattern.calculateStrings.useQuery(
+    { patternId: cleanPatternId, desiredLengthCm: lengthCm },
+    { enabled: canCalculate }
+  );
 
-    const factor = knotFactors[knotType] || 0.3;
+  const pattern = calcResult && "pattern" in calcResult ? calcResult.pattern : null;
+  const calculation = calcResult && "calculation" in calcResult ? calcResult.calculation : null;
+  const errorMsg = calcResult && "error" in calcResult ? (calcResult as any).error : null;
 
-    // Base string length calculation
-    // Each knot consumes ~factor cm of the knotting string
-    // We also add extra for tying off ends
-    const tieOffExtra = 10; // cm for tying knots at each end
-    const safetyMargin = 1.15; // 15% safety margin
+  // Build preview image URL deterministically for instant display
+  const previewUrl = cleanPatternId.length > 0
+    ? (() => {
+        const padded = cleanPatternId.padStart(12, "0");
+        const aaa = padded.slice(6, 9);
+        const bbb = padded.slice(9, 12);
+        return `https://media.braceletbookcdn.com/patterns/000/000/${aaa}/${bbb}/${padded}/preview.png`;
+      })()
+    : null;
 
-    let stringLength: number;
-
-    if (knots && perString && strings) {
-      // Detailed calculation: based on knots per string
-      const knotConsumption = perString * factor;
-      stringLength = (length + knotConsumption + tieOffExtra) * safetyMargin;
-    } else if (knots && strings) {
-      // Estimate knots per string evenly
-      const estimatedPerString = knots / strings;
-      const knotConsumption = estimatedPerString * factor;
-      stringLength = (length + knotConsumption + tieOffExtra) * safetyMargin;
-    } else {
-      // Simple estimate: multiply desired length by 3-4x
-      stringLength = length * 3.5 + tieOffExtra;
+  const displayLength = (cm: number) => {
+    if (unit === "inches") {
+      return `${(cm / 2.54).toFixed(1)} in`;
     }
-
-    // Convert if needed
-    const multiplier = unit === "inches" ? 2.54 : 1;
-    const rawLength = length * multiplier;
-    const rawResult = stringLength * (unit === "inches" ? 1 / 2.54 : 1);
-
-    return {
-      stringLength: Math.ceil(rawResult),
-      unit,
-      desiredLength: length,
-      details: {
-        knotConsumption: knots && perString ? perString * factor : null,
-        tieOff: tieOffExtra,
-        safetyPercent: 15,
-      },
-    };
-  }, [desiredLength, totalKnots, knotsPerString, numberOfStrings, knotType, unit]);
+    return `${Math.ceil(cm)} cm`;
+  };
 
   return (
     <div className="max-w-2xl mx-auto space-y-6">
@@ -93,7 +60,7 @@ export default function StringCalculator() {
           String Length Calculator
         </h1>
         <p className="text-muted-foreground mt-1">
-          Calculate how long to cut your strings based on your desired bracelet length and pattern complexity.
+          Enter a BraceletBook pattern ID and your desired bracelet length. We'll fetch the pattern details and calculate how long to cut each string.
         </p>
       </div>
 
@@ -104,23 +71,33 @@ export default function StringCalculator() {
             Calculator
           </CardTitle>
           <CardDescription>
-            Enter your desired bracelet length and pattern details to get a recommended string cut length.
+            Paste a BraceletBook pattern number and your desired final bracelet length.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label className="flex items-center gap-1.5">
-                Desired Bracelet Length *
-                <Tooltip>
-                  <TooltipTrigger>
-                    <Info className="h-3.5 w-3.5 text-muted-foreground" />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p className="max-w-xs text-xs">The final length you want your bracelet to be when worn.</p>
-                  </TooltipContent>
-                </Tooltip>
-              </Label>
+              <Label>BraceletBook Pattern ID *</Label>
+              <Input
+                type="text"
+                value={patternId}
+                onChange={(e) => setPatternId(e.target.value)}
+                placeholder="e.g., 207002"
+              />
+              {cleanPatternId && (
+                <a
+                  href={`https://www.braceletbook.com/patterns/normal/${cleanPatternId}/`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-primary hover:underline flex items-center gap-1"
+                >
+                  View on BraceletBook <ExternalLink className="h-3 w-3" />
+                </a>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label>Desired Bracelet Length *</Label>
               <div className="flex gap-2">
                 <Input
                   type="number"
@@ -142,127 +119,144 @@ export default function StringCalculator() {
                 </Select>
               </div>
             </div>
-
-            <div className="space-y-2">
-              <Label className="flex items-center gap-1.5">
-                Knot Type
-                <Tooltip>
-                  <TooltipTrigger>
-                    <Info className="h-3.5 w-3.5 text-muted-foreground" />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p className="max-w-xs text-xs">Different knot types consume different amounts of string.</p>
-                  </TooltipContent>
-                </Tooltip>
-              </Label>
-              <Select value={knotType} onValueChange={setKnotType}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="forward">Forward Knot</SelectItem>
-                  <SelectItem value="backward">Backward Knot</SelectItem>
-                  <SelectItem value="forward_backward">Forward-Backward</SelectItem>
-                  <SelectItem value="backward_forward">Backward-Forward</SelectItem>
-                  <SelectItem value="chinese">Chinese Staircase</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label className="flex items-center gap-1.5">
-                Total Knots in Pattern
-                <Tooltip>
-                  <TooltipTrigger>
-                    <Info className="h-3.5 w-3.5 text-muted-foreground" />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p className="max-w-xs text-xs">Total number of knots in the full pattern. Found on BraceletBook pattern pages.</p>
-                  </TooltipContent>
-                </Tooltip>
-              </Label>
-              <Input
-                type="number"
-                min="0"
-                value={totalKnots}
-                onChange={(e) => setTotalKnots(e.target.value)}
-                placeholder="e.g., 200"
-              />
+          {/* Pattern Preview */}
+          {previewUrl && cleanPatternId && (
+            <div className="rounded-lg border bg-muted/30 p-4">
+              <p className="text-xs text-muted-foreground mb-2 font-medium">Pattern Preview</p>
+              <div className="overflow-x-auto">
+                <img
+                  src={previewUrl}
+                  alt={`Pattern #${cleanPatternId} preview`}
+                  className="h-12 w-auto max-w-full object-contain"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).style.display = "none";
+                  }}
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label className="flex items-center gap-1.5">
-                Knots Per String
-                <Tooltip>
-                  <TooltipTrigger>
-                    <Info className="h-3.5 w-3.5 text-muted-foreground" />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p className="max-w-xs text-xs">How many knots each individual string makes. If unsure, leave blank for an estimate.</p>
-                  </TooltipContent>
-                </Tooltip>
-              </Label>
-              <Input
-                type="number"
-                min="0"
-                value={knotsPerString}
-                onChange={(e) => setKnotsPerString(e.target.value)}
-                placeholder="e.g., 50"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Number of Strings</Label>
-              <Input
-                type="number"
-                min="1"
-                value={numberOfStrings}
-                onChange={(e) => setNumberOfStrings(e.target.value)}
-                placeholder="e.g., 8"
-              />
-            </div>
-          </div>
+          )}
         </CardContent>
       </Card>
 
-      {/* Result */}
-      {result && (
-        <Card className="border-primary/30 bg-primary/5">
+      {/* Loading */}
+      {isLoading && canCalculate && (
+        <Card className="border-muted">
           <CardContent className="pt-6">
             <div className="text-center space-y-3">
-              <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto">
-                <Scissors className="h-7 w-7 text-primary" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Recommended String Length</p>
-                <p className="text-4xl font-bold text-primary mt-1">
-                  {result.stringLength} {result.unit}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">per string</p>
-              </div>
-              <div className="pt-3 border-t border-primary/10">
-                <div className="grid grid-cols-3 gap-4 text-center">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Desired Length</p>
-                    <p className="font-medium text-sm">
-                      {result.desiredLength} {result.unit}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Tie-off Extra</p>
-                    <p className="font-medium text-sm">
-                      ~{result.details.tieOff} cm
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Safety Margin</p>
-                    <p className="font-medium text-sm">+{result.details.safetyPercent}%</p>
-                  </div>
-                </div>
-              </div>
+              <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+              <p className="text-sm text-muted-foreground">Fetching pattern data from BraceletBook...</p>
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Error */}
+      {(errorMsg || error) && (
+        <Card className="border-destructive/30 bg-destructive/5">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-3">
+              <AlertCircle className="h-5 w-5 text-destructive shrink-0" />
+              <p className="text-sm text-destructive">
+                {errorMsg || "Could not fetch pattern data. Please check the pattern ID and try again."}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Result */}
+      {pattern && calculation && (
+        <>
+          {/* Pattern Info */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">
+                Pattern #{pattern.patternId}
+                {pattern.author && (
+                  <span className="text-muted-foreground font-normal text-sm ml-2">
+                    by {pattern.author}
+                  </span>
+                )}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
+                <div className="rounded-lg bg-muted/50 p-3">
+                  <p className="text-xs text-muted-foreground">Strings</p>
+                  <p className="text-xl font-bold">{pattern.strings}</p>
+                </div>
+                <div className="rounded-lg bg-muted/50 p-3">
+                  <p className="text-xs text-muted-foreground">Dimensions</p>
+                  <p className="text-xl font-bold">{pattern.dimensions}</p>
+                </div>
+                <div className="rounded-lg bg-muted/50 p-3">
+                  <p className="text-xs text-muted-foreground">Colors</p>
+                  <p className="text-xl font-bold">{pattern.colors}</p>
+                </div>
+                <div className="rounded-lg bg-muted/50 p-3">
+                  <p className="text-xs text-muted-foreground">Total Knots</p>
+                  <p className="text-xl font-bold">{pattern.totalKnots}</p>
+                </div>
+              </div>
+
+              {/* Color swatches */}
+              {pattern.colorHexValues.length > 0 && (
+                <div className="mt-4 flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">Colors:</span>
+                  <div className="flex gap-1.5">
+                    {pattern.colorHexValues.map((hex: string, i: number) => (
+                      <div
+                        key={i}
+                        className="w-6 h-6 rounded-full border border-border shadow-sm"
+                        style={{ backgroundColor: hex }}
+                        title={hex}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Calculation Result */}
+          <Card className="border-primary/30 bg-primary/5">
+            <CardContent className="pt-6">
+              <div className="text-center space-y-3">
+                <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto">
+                  <Scissors className="h-7 w-7 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Recommended String Length</p>
+                  <p className="text-4xl font-bold text-primary mt-1">
+                    {displayLength(calculation.recommendedLengthCm)}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">per string</p>
+                </div>
+                <div className="pt-3 border-t border-primary/10">
+                  <div className="grid grid-cols-3 gap-4 text-center">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Min Length</p>
+                      <p className="font-medium text-sm">{displayLength(calculation.minLengthCm)}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Knots/String</p>
+                      <p className="font-medium text-sm">~{calculation.knotsPerString}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Max Length</p>
+                      <p className="font-medium text-sm">{displayLength(calculation.maxLengthCm)}</p>
+                    </div>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground pt-2 max-w-md mx-auto">
+                  {calculation.explanation}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </>
       )}
 
       {/* Tips */}
@@ -272,16 +266,13 @@ export default function StringCalculator() {
         </CardHeader>
         <CardContent className="space-y-3 text-sm text-muted-foreground">
           <p>
-            <strong className="text-foreground">General rule:</strong> Cut strings 3 to 4 times the desired bracelet length. For complex patterns with many knots, go longer.
+            <strong className="text-foreground">How it works:</strong> We fetch the pattern's SVG from BraceletBook, count the total knots, and calculate how much string each knot consumes (~0.4cm per knot) plus your desired length and tie-off room.
           </p>
           <p>
-            <strong className="text-foreground">Knot count matters:</strong> Strings that make more knots get used up faster. If one string does most of the knotting (like in a chevron), cut it extra long.
+            <strong className="text-foreground">Better too long than too short:</strong> The recommended length includes a safety margin. You can always trim excess, but running out of string mid-bracelet means starting over.
           </p>
           <p>
-            <strong className="text-foreground">Better too long than too short:</strong> You can always trim excess, but running out of string mid-bracelet means starting over.
-          </p>
-          <p>
-            <strong className="text-foreground">Track your results:</strong> Log the string lengths you use for each bracelet to build your own reference over time.
+            <strong className="text-foreground">Track your results:</strong> After making a bracelet, log the actual string length you used. Over time you'll build a personal reference that's more accurate than any formula.
           </p>
         </CardContent>
       </Card>

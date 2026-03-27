@@ -11,8 +11,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Plus, X, Upload } from "lucide-react";
-import { useState, useRef } from "react";
+import { ArrowLeft, Plus, X, Upload, Loader2, ExternalLink } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 
@@ -110,7 +110,7 @@ export default function AddBracelet() {
     // Auto-generate BraceletBook URL if pattern number is provided
     let url = patternUrl;
     if (patternNumber && !patternUrl) {
-      url = `https://www.braceletbook.com/pattern/${patternNumber}/`;
+      url = `https://www.braceletbook.com/patterns/normal/${patternNumber}/`;
     }
 
     createMutation.mutate({
@@ -172,8 +172,18 @@ export default function AddBracelet() {
                   id="patternNumber"
                   value={patternNumber}
                   onChange={(e) => setPatternNumber(e.target.value)}
-                  placeholder="e.g., 12345"
+                  placeholder="e.g., 207002"
                 />
+                {patternNumber && (
+                  <a
+                    href={`https://www.braceletbook.com/patterns/normal/${patternNumber.replace(/\D/g, '')}/`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs text-primary hover:underline flex items-center gap-1"
+                  >
+                    View on BraceletBook <ExternalLink className="h-3 w-3" />
+                  </a>
+                )}
               </div>
               <div className="space-y-2">
                 <Label htmlFor="patternName">Pattern Name</Label>
@@ -185,13 +195,41 @@ export default function AddBracelet() {
                 />
               </div>
             </div>
+            {/* BraceletBook Pattern Preview */}
+            {patternNumber && (() => {
+              const cleanId = patternNumber.replace(/\D/g, '');
+              if (!cleanId) return null;
+              const padded = cleanId.padStart(12, '0');
+              const aaa = padded.slice(6, 9);
+              const bbb = padded.slice(9, 12);
+              const base = `https://media.braceletbookcdn.com/patterns/000/000/${aaa}/${bbb}/${padded}`;
+              return (
+                <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+                  <p className="text-xs text-muted-foreground font-medium">Pattern Preview</p>
+                  <div className="flex items-center gap-4 overflow-x-auto">
+                    <img
+                      src={`${base}/preview.png`}
+                      alt="Preview"
+                      className="h-10 w-auto object-contain"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    />
+                    <img
+                      src={`${base}/pattern.png`}
+                      alt="Pattern"
+                      className="h-24 w-auto object-contain opacity-80"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    />
+                  </div>
+                </div>
+              );
+            })()}
             <div className="space-y-2">
               <Label htmlFor="patternUrl">Pattern URL (auto-fills from pattern #)</Label>
               <Input
                 id="patternUrl"
                 value={patternUrl}
                 onChange={(e) => setPatternUrl(e.target.value)}
-                placeholder="https://www.braceletbook.com/pattern/..."
+                placeholder="https://www.braceletbook.com/patterns/normal/..."
               />
             </div>
           </CardContent>

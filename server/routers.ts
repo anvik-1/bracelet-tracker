@@ -18,6 +18,7 @@ import {
 } from "./db";
 import { storagePut } from "./storage";
 import { nanoid } from "nanoid";
+import { fetchPatternData, getPatternImageUrls, calculateStringLengths } from "./braceletbook";
 
 const braceletInput = z.object({
   name: z.string().min(1).max(255),
@@ -158,6 +159,50 @@ export const appRouter = router({
       console.log("[Bracelet] Getting stats for user:", ctx.user.id);
       return getBraceletStats(ctx.user.id);
     }),
+  }),
+
+  pattern: router({
+    lookup: protectedProcedure
+      .input(z.object({ patternId: z.string().min(1) }))
+      .query(async ({ input }) => {
+        console.log("[Pattern] Looking up BraceletBook pattern:", input.patternId);
+        const data = await fetchPatternData(input.patternId);
+        if (!data) {
+          return null;
+        }
+        return data;
+      }),
+
+    imageUrls: publicProcedure
+      .input(z.object({ patternId: z.string().min(1) }))
+      .query(({ input }) => {
+        return getPatternImageUrls(input.patternId.replace(/^#/, "").replace(/\D/g, ""));
+      }),
+
+    calculateStrings: protectedProcedure
+      .input(
+        z.object({
+          patternId: z.string().min(1),
+          desiredLengthCm: z.number().min(1),
+        })
+      )
+      .query(async ({ input }) => {
+        console.log("[Pattern] Calculating strings for pattern:", input.patternId, "length:", input.desiredLengthCm);
+        const pattern = await fetchPatternData(input.patternId);
+        if (!pattern) {
+          return { error: "Pattern not found on BraceletBook" };
+        }
+        const calc = calculateStringLengths({
+          desiredLengthCm: input.desiredLengthCm,
+          totalKnots: pattern.totalKnots,
+          numStrings: pattern.strings,
+          rows: pattern.rows,
+        });
+        return {
+          pattern,
+          calculation: calc,
+        };
+      }),
   }),
 
   thread: router({

@@ -238,7 +238,7 @@ export default function Home() {
               className="overflow-hidden hover:shadow-lg transition-all duration-200 cursor-pointer group"
               onClick={() => setLocation(`/bracelet/${bracelet.id}`)}
             >
-              {/* Photo */}
+              {/* Photo / Pattern Preview */}
               <div className="h-40 bg-gradient-to-br from-primary/5 to-primary/10 relative overflow-hidden">
                 {bracelet.photoUrl ? (
                   <img
@@ -246,6 +246,21 @@ export default function Home() {
                     alt={bracelet.name}
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   />
+                ) : bracelet.patternNumber ? (
+                  <div className="w-full h-full flex flex-col items-center justify-center gap-2 p-3">
+                    <img
+                      src={`https://media.braceletbookcdn.com/patterns/000/000/${bracelet.patternNumber.padStart(12, '0').slice(6,9)}/${bracelet.patternNumber.padStart(12, '0').slice(9,12)}/${bracelet.patternNumber.padStart(12, '0')}/preview.png`}
+                      alt={`Pattern #${bracelet.patternNumber}`}
+                      className="h-10 w-auto max-w-full object-contain"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    />
+                    <img
+                      src={`https://media.braceletbookcdn.com/patterns/000/000/${bracelet.patternNumber.padStart(12, '0').slice(6,9)}/${bracelet.patternNumber.padStart(12, '0').slice(9,12)}/${bracelet.patternNumber.padStart(12, '0')}/pattern.png`}
+                      alt={`Pattern #${bracelet.patternNumber} diagram`}
+                      className="h-20 w-auto max-w-full object-contain opacity-80"
+                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                    />
+                  </div>
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
                     <Gem className="h-12 w-12 text-primary/20" />

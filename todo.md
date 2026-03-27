@@ -16,3 +16,10 @@
 - [x] MANUS.md preserved at project root
 - [x] Copy MANUS.md to project root
 - [x] Unit tests for bracelet and thread routers (20 tests passing)
+- [x] BraceletBook integration: server-side scraper to fetch pattern data (image, string count, colors, knot rows)
+- [x] String Calculator: redesign to accept pattern ID + desired length, auto-fetch pattern details from BraceletBook
+- [x] Bracelet cards: show BraceletBook pattern preview image on cards
+- [x] Add Bracelet form: auto-fetch pattern preview when entering pattern number
+- [x] Edit Bracelet form: show pattern preview when pattern number is entered
+- [x] Bracelet Detail page: show full pattern diagram from BraceletBook
+- [x] Unit tests for BraceletBook integration (9 tests for URL generation and string calculation)
