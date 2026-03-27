@@ -8,10 +8,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Scissors, Calculator, ExternalLink, Loader2, AlertCircle } from "lucide-react";
+import { Scissors, Calculator, ExternalLink, Loader2, AlertCircle, History, TrendingUp } from "lucide-react";
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
-import { Button } from "@/components/ui/button";
 
 export default function StringCalculator() {
   const [patternId, setPatternId] = useState("");
@@ -31,6 +30,7 @@ export default function StringCalculator() {
 
   const pattern = calcResult && "pattern" in calcResult ? calcResult.pattern : null;
   const calculation = calcResult && "calculation" in calcResult ? calcResult.calculation : null;
+  const learningData = calcResult && "learningData" in calcResult ? (calcResult as any).learningData : null;
   const errorMsg = calcResult && "error" in calcResult ? (calcResult as any).error : null;
 
   // Build preview image URL deterministically for instant display
@@ -256,6 +256,60 @@ export default function StringCalculator() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Learning Data from Past Bracelets */}
+          {learningData && (
+            <Card className="border-amber-500/30 bg-amber-50/50">
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4 text-amber-600" />
+                  Your Personal Data
+                </CardTitle>
+                <CardDescription>
+                  Based on {learningData.dataPoints} bracelet{learningData.dataPoints !== 1 ? "s" : ""} you've logged with this pattern.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-center">
+                  <div className="rounded-lg bg-white/60 p-3">
+                    <p className="text-xs text-muted-foreground">Avg String Used</p>
+                    <p className="text-lg font-bold text-amber-700">
+                      {displayLength(learningData.avgStringLengthCm)}
+                    </p>
+                  </div>
+                  <div className="rounded-lg bg-white/60 p-3">
+                    <p className="text-xs text-muted-foreground">Avg Leftover</p>
+                    <p className="text-lg font-bold text-amber-700">
+                      {learningData.avgLeftoverCm != null
+                        ? displayLength(learningData.avgLeftoverCm)
+                        : "N/A"}
+                    </p>
+                  </div>
+                  <div className="rounded-lg bg-white/60 p-3">
+                    <p className="text-xs text-muted-foreground">Avg Final Length</p>
+                    <p className="text-lg font-bold text-amber-700">
+                      {displayLength(learningData.avgFinalLengthCm)}
+                    </p>
+                  </div>
+                </div>
+                {learningData.personalRecommendation && (
+                  <div className="mt-4 p-3 rounded-lg bg-white/60 border border-amber-200">
+                    <div className="flex items-start gap-2">
+                      <History className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+                      <div>
+                        <p className="text-sm font-medium text-amber-800">Personal Recommendation</p>
+                        <p className="text-sm text-amber-700 mt-1">
+                          Based on your past results, cut your strings to{" "}
+                          <strong>{displayLength(learningData.personalRecommendation)}</strong> for a{" "}
+                          {displayLength(lengthCm)} bracelet.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </>
       )}
 
@@ -269,10 +323,10 @@ export default function StringCalculator() {
             <strong className="text-foreground">How it works:</strong> We fetch the pattern's SVG from BraceletBook, count the total knots, and calculate how much string each knot consumes (~0.4cm per knot) plus your desired length and tie-off room.
           </p>
           <p>
-            <strong className="text-foreground">Better too long than too short:</strong> The recommended length includes a safety margin. You can always trim excess, but running out of string mid-bracelet means starting over.
+            <strong className="text-foreground">Learning from your data:</strong> When you log a completed bracelet with measurements (string cut length, final length, leftover), the calculator uses that data to give you personalized recommendations for the same pattern.
           </p>
           <p>
-            <strong className="text-foreground">Track your results:</strong> After making a bracelet, log the actual string length you used. Over time you'll build a personal reference that's more accurate than any formula.
+            <strong className="text-foreground">Better too long than too short:</strong> The recommended length includes a safety margin. You can always trim excess, but running out of string mid-bracelet means starting over.
           </p>
         </CardContent>
       </Card>

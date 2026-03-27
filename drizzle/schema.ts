@@ -34,9 +34,18 @@ export const bracelets = mysqlTable("bracelets", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
   name: varchar("name", { length: 255 }).notNull(),
+  /** Status of the bracelet project */
+  status: mysqlEnum("status", [
+    "want_to_make",
+    "in_progress",
+    "completed",
+    "frogged",
+    "gifted",
+  ]).default("want_to_make").notNull(),
   patternName: varchar("patternName", { length: 255 }),
   patternNumber: varchar("patternNumber", { length: 100 }),
   patternUrl: text("patternUrl"),
+  /** Array of thread library IDs used for this bracelet */
   colors: json("colors").$type<string[]>().default([]),
   materials: varchar("materials", { length: 500 }),
   dateMade: timestamp("dateMade"),
@@ -47,9 +56,14 @@ export const bracelets = mysqlTable("bracelets", {
   outcome: mysqlEnum("outcome", ["perfect", "good", "okay", "needs_improvement", "failed"]),
   photoUrl: text("photoUrl"),
   photoKey: varchar("photoKey", { length: 500 }),
+  /** Final bracelet length in cm (actual measured) */
   finalLengthCm: float("finalLengthCm"),
+  /** How long each string was cut in cm (actual measured) */
   stringLengthCm: float("stringLengthCm"),
+  /** Number of strings used */
   numberOfStrings: int("numberOfStrings"),
+  /** How much leftover string remained in cm (for calculator learning) */
+  leftoverStringCm: float("leftoverStringCm"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -68,6 +82,16 @@ export const threadLibrary = mysqlTable("thread_library", {
   brand: varchar("brand", { length: 100 }),
   colorCode: varchar("colorCode", { length: 50 }),
   quantity: int("quantity").default(1),
+  /** Thread type: regular, glitter, metallic, glow_in_dark, multicolor */
+  threadType: mysqlEnum("threadType", [
+    "regular",
+    "glitter",
+    "metallic",
+    "glow_in_dark",
+    "multicolor",
+  ]).default("regular").notNull(),
+  /** For multicolor threads: array of hex colors in the thread */
+  secondaryColors: json("secondaryColors").$type<string[]>().default([]),
   notes: text("notes"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),

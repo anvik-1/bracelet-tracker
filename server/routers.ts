@@ -10,6 +10,7 @@ import {
   updateBracelet,
   deleteBracelet,
   getBraceletStats,
+  getPatternHistory,
   createThread,
   listThreads,
   getThreadById,
@@ -20,8 +21,11 @@ import { storagePut } from "./storage";
 import { nanoid } from "nanoid";
 import { fetchPatternData, getPatternImageUrls, calculateStringLengths } from "./braceletbook";
 
+const statusEnum = z.enum(["want_to_make", "in_progress", "completed", "frogged", "gifted"]);
+
 const braceletInput = z.object({
   name: z.string().min(1).max(255),
+  status: statusEnum.optional().default("want_to_make"),
   patternName: z.string().max(255).optional().nullable(),
   patternNumber: z.string().max(100).optional().nullable(),
   patternUrl: z.string().optional().nullable(),
@@ -36,6 +40,7 @@ const braceletInput = z.object({
   finalLengthCm: z.number().min(0).optional().nullable(),
   stringLengthCm: z.number().min(0).optional().nullable(),
   numberOfStrings: z.number().int().min(0).optional().nullable(),
+  leftoverStringCm: z.number().min(0).optional().nullable(),
 });
 
 const threadInput = z.object({
@@ -44,6 +49,8 @@ const threadInput = z.object({
   brand: z.string().max(100).optional().nullable(),
   colorCode: z.string().max(50).optional().nullable(),
   quantity: z.number().int().min(0).optional().default(1),
+  threadType: z.enum(["regular", "glitter", "metallic", "glow_in_dark", "multicolor"]).optional().default("regular"),
+  secondaryColors: z.array(z.string().regex(/^#[0-9a-fA-F]{6}$/)).optional().default([]),
   notes: z.string().optional().nullable(),
 });
 
@@ -64,6 +71,7 @@ export const appRouter = router({
       return createBracelet({
         userId: ctx.user.id,
         name: input.name,
+        status: input.status ?? "want_to_make",
         patternName: input.patternName ?? null,
         patternNumber: input.patternNumber ?? null,
         patternUrl: input.patternUrl ?? null,
@@ -78,6 +86,7 @@ export const appRouter = router({
         finalLengthCm: input.finalLengthCm ?? null,
         stringLengthCm: input.stringLengthCm ?? null,
         numberOfStrings: input.numberOfStrings ?? null,
+        leftoverStringCm: input.leftoverStringCm ?? null,
       });
     }),
 
@@ -89,6 +98,7 @@ export const appRouter = router({
             difficulty: z.string().optional(),
             rating: z.number().optional(),
             outcome: z.string().optional(),
+            status: z.string().optional(),
             color: z.string().optional(),
             dateFrom: z.string().optional(),
             dateTo: z.string().optional(),
@@ -186,21 +196,80 @@ export const appRouter = router({
           desiredLengthCm: z.number().min(1),
         })
       )
-      .query(async ({ input }) => {
+      .query(async ({ ctx, input }) => {
         console.log("[Pattern] Calculating strings for pattern:", input.patternId, "length:", input.desiredLengthCm);
         const pattern = await fetchPatternData(input.patternId);
         if (!pattern) {
           return { error: "Pattern not found on BraceletBook" };
         }
+
+        // Get historical data for this pattern to improve estimates
+        const history = await getPatternHistory(ctx.user.id, input.patternId.replace(/\D/g, ""));
+
         const calc = calculateStringLengths({
           desiredLengthCm: input.desiredLengthCm,
           totalKnots: pattern.totalKnots,
           numStrings: pattern.strings,
           rows: pattern.rows,
         });
+
+        // If we have historical data, provide a learned estimate
+        let learnedEstimate = null;
+        if (history.length > 0) {
+          const validHistory = history.filter(
+            (h) => h.stringLengthCm != null && h.finalLengthCm != null && h.finalLengthCm > 0
+          );
+          if (validHistory.length > 0) {
+            // Calculate the average ratio of string length to final length
+            const ratios = validHistory.map((h) => (h.stringLengthCm || 0) / (h.finalLengthCm || 1));
+            const avgRatio = ratios.reduce((a, b) => a + b, 0) / ratios.length;
+            const learnedLength = Math.ceil(input.desiredLengthCm * avgRatio);
+
+            // Also check leftover data for more precise estimates
+            const withLeftover = validHistory.filter((h) => h.leftoverStringCm != null);
+            let avgLeftover = 0;
+            if (withLeftover.length > 0) {
+              avgLeftover = withLeftover.reduce((a, h) => a + (h.leftoverStringCm || 0), 0) / withLeftover.length;
+            }
+
+            learnedEstimate = {
+              recommendedLengthCm: learnedLength,
+              basedOnCount: validHistory.length,
+              avgRatio: Math.round(avgRatio * 100) / 100,
+              avgLeftoverCm: Math.round(avgLeftover * 10) / 10,
+              note: `Based on ${validHistory.length} previous bracelet(s) with this pattern. Average string-to-length ratio: ${avgRatio.toFixed(1)}x.${avgLeftover > 0 ? ` Average leftover: ${avgLeftover.toFixed(1)}cm — you could cut ${Math.ceil(learnedLength - avgLeftover)}cm to reduce waste.` : ""}`,
+            };
+          }
+        }
+
+        // Build learningData for the frontend
+        let learningData = null;
+        if (history.length > 0) {
+          const withString = history.filter((h) => h.stringLengthCm != null && h.finalLengthCm != null && h.finalLengthCm > 0);
+          const withLeftover = history.filter((h) => h.leftoverStringCm != null);
+          if (withString.length > 0) {
+            const avgStringLength = withString.reduce((a, h) => a + (h.stringLengthCm || 0), 0) / withString.length;
+            const avgFinalLength = withString.reduce((a, h) => a + (h.finalLengthCm || 0), 0) / withString.length;
+            const avgLeftover = withLeftover.length > 0
+              ? withLeftover.reduce((a, h) => a + (h.leftoverStringCm || 0), 0) / withLeftover.length
+              : null;
+            
+            learningData = {
+              dataPoints: withString.length,
+              avgStringLengthCm: Math.round(avgStringLength * 10) / 10,
+              avgFinalLengthCm: Math.round(avgFinalLength * 10) / 10,
+              avgLeftoverCm: avgLeftover != null ? Math.round(avgLeftover * 10) / 10 : null,
+              personalRecommendation: learnedEstimate?.recommendedLengthCm || null,
+            };
+          }
+        }
+
         return {
           pattern,
           calculation: calc,
+          learningData,
+          learnedEstimate,
+          historyCount: history.length,
         };
       }),
   }),

@@ -15,6 +15,13 @@
       "when": 1774497302263,
       "tag": "0001_absurd_silhouette",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1774584413678,
+      "tag": "0002_big_korg",
+      "breakpoints": true
     }
   ]
 }

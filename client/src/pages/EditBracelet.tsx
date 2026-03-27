@@ -10,19 +10,32 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft, Plus, X, Upload, Loader2, ExternalLink } from "lucide-react";
-import { useState, useRef, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { ArrowLeft, Plus, X, Upload, Loader2, ExternalLink, Sparkles, Info } from "lucide-react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useLocation, useParams } from "wouter";
 import { toast } from "sonner";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
-const PRESET_COLORS = [
-  "#FF0000", "#FF4500", "#FF8C00", "#FFD700", "#FFFF00",
-  "#9ACD32", "#32CD32", "#008000", "#20B2AA", "#00CED1",
-  "#1E90FF", "#0000FF", "#4B0082", "#8B008B", "#FF1493",
-  "#FF69B4", "#FFFFFF", "#C0C0C0", "#808080", "#000000",
-  "#8B4513", "#D2691E", "#F4A460", "#DEB887",
-];
+const THREAD_TYPE_LABELS: Record<string, string> = {
+  regular: "Regular",
+  glitter: "Glitter",
+  metallic: "Metallic",
+  glow_in_dark: "Glow in Dark",
+  multicolor: "Multicolor",
+};
+
+const THREAD_TYPE_ICONS: Record<string, string> = {
+  glitter: "✨",
+  metallic: "🪙",
+  glow_in_dark: "🌙",
+  multicolor: "🌈",
+};
 
 export default function EditBracelet() {
   const params = useParams<{ id: string }>();
@@ -35,12 +48,14 @@ export default function EditBracelet() {
     { enabled: braceletId > 0 }
   );
 
+  const { data: threads } = trpc.thread.list.useQuery({});
+
   const [name, setName] = useState("");
+  const [status, setStatus] = useState("want_to_make");
   const [patternName, setPatternName] = useState("");
   const [patternNumber, setPatternNumber] = useState("");
   const [patternUrl, setPatternUrl] = useState("");
   const [colors, setColors] = useState<string[]>([]);
-  const [customColor, setCustomColor] = useState("#FF0000");
   const [materials, setMaterials] = useState("");
   const [dateMade, setDateMade] = useState("");
   const [timeTakenMinutes, setTimeTakenMinutes] = useState("");
@@ -51,15 +66,26 @@ export default function EditBracelet() {
   const [finalLengthCm, setFinalLengthCm] = useState("");
   const [stringLengthCm, setStringLengthCm] = useState("");
   const [numberOfStrings, setNumberOfStrings] = useState("");
+  const [leftoverStringCm, setLeftoverStringCm] = useState("");
   const [photoBase64, setPhotoBase64] = useState<string | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoFile, setPhotoFile] = useState<{ name: string; type: string } | null>(null);
   const [initialized, setInitialized] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Fetch pattern data for color limit
+  const cleanPatternId = patternNumber.replace(/\D/g, "");
+  const { data: patternData } = trpc.pattern.lookup.useQuery(
+    { patternId: cleanPatternId },
+    { enabled: cleanPatternId.length >= 3 }
+  );
+
+  const maxColors = patternData?.strings || null;
+
   useEffect(() => {
     if (bracelet && !initialized) {
       setName(bracelet.name || "");
+      setStatus((bracelet as any).status || "want_to_make");
       setPatternName(bracelet.patternName || "");
       setPatternNumber(bracelet.patternNumber || "");
       setPatternUrl(bracelet.patternUrl || "");
@@ -74,6 +100,7 @@ export default function EditBracelet() {
       setFinalLengthCm(bracelet.finalLengthCm?.toString() || "");
       setStringLengthCm(bracelet.stringLengthCm?.toString() || "");
       setNumberOfStrings(bracelet.numberOfStrings?.toString() || "");
+      setLeftoverStringCm((bracelet as any).leftoverStringCm?.toString() || "");
       if (bracelet.photoUrl) {
         setPhotoPreview(bracelet.photoUrl);
       }
@@ -116,12 +143,16 @@ export default function EditBracelet() {
     reader.readAsDataURL(file);
   };
 
-  const addColor = (color: string) => {
-    if (!colors.includes(color)) setColors([...colors, color]);
+  const addColor = (hex: string) => {
+    if (maxColors && colors.length >= maxColors) {
+      toast.error(`This pattern only uses ${maxColors} strings — you've selected the maximum colors.`);
+      return;
+    }
+    if (!colors.includes(hex)) setColors([...colors, hex]);
   };
 
-  const removeColor = (color: string) => {
-    setColors(colors.filter((c) => c !== color));
+  const removeColor = (hex: string) => {
+    setColors(colors.filter((c) => c !== hex));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -133,7 +164,7 @@ export default function EditBracelet() {
 
     let url = patternUrl;
     if (patternNumber && !patternUrl) {
-      url = `https://www.braceletbook.com/patterns/normal/${patternNumber}/`;
+      url = `https://www.braceletbook.com/patterns/normal/${cleanPatternId}/`;
     }
 
     if (photoBase64) {
@@ -152,8 +183,9 @@ export default function EditBracelet() {
     updateMutation.mutate({
       id: braceletId,
       name: name.trim(),
+      status: status as any,
       patternName: patternName || null,
-      patternNumber: patternNumber || null,
+      patternNumber: cleanPatternId || null,
       patternUrl: url || null,
       colors,
       materials: materials || null,
@@ -166,8 +198,21 @@ export default function EditBracelet() {
       finalLengthCm: finalLengthCm ? parseFloat(finalLengthCm) : null,
       stringLengthCm: stringLengthCm ? parseFloat(stringLengthCm) : null,
       numberOfStrings: numberOfStrings ? parseInt(numberOfStrings) : null,
+      leftoverStringCm: leftoverStringCm ? parseFloat(leftoverStringCm) : null,
     });
   };
+
+  // Group threads by type
+  const threadsByType = useMemo(() => {
+    if (!threads) return {};
+    const groups: Record<string, typeof threads> = {};
+    for (const t of threads) {
+      const type = (t as any).threadType || "regular";
+      if (!groups[type]) groups[type] = [];
+      groups[type].push(t);
+    }
+    return groups;
+  }, [threads]);
 
   if (loadingBracelet) {
     return (
@@ -204,17 +249,34 @@ export default function EditBracelet() {
         <Card>
           <CardHeader><CardTitle className="text-base">Basic Info</CardTitle></CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Bracelet Name *</Label>
-              <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Bracelet Name *</Label>
+                <Input id="name" value={name} onChange={(e) => setName(e.target.value)} required />
+              </div>
+              <div className="space-y-2">
+                <Label>Status</Label>
+                <Select value={status} onValueChange={setStatus}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="want_to_make">Want to Make</SelectItem>
+                    <SelectItem value="in_progress">In Progress</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="frogged">Frogged</SelectItem>
+                    <SelectItem value="gifted">Gifted</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>BraceletBook Pattern #</Label>
                 <Input value={patternNumber} onChange={(e) => setPatternNumber(e.target.value)} placeholder="e.g., 207002" />
-                {patternNumber && (
+                {cleanPatternId && (
                   <a
-                    href={`https://www.braceletbook.com/patterns/normal/${patternNumber.replace(/\D/g, '')}/`}
+                    href={`https://www.braceletbook.com/patterns/normal/${cleanPatternId}/`}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-xs text-primary hover:underline flex items-center gap-1"
@@ -228,34 +290,23 @@ export default function EditBracelet() {
                 <Input value={patternName} onChange={(e) => setPatternName(e.target.value)} />
               </div>
             </div>
-            {/* BraceletBook Pattern Preview */}
-            {patternNumber && (() => {
-              const cleanId = patternNumber.replace(/\D/g, '');
-              if (!cleanId) return null;
-              const padded = cleanId.padStart(12, '0');
-              const aaa = padded.slice(6, 9);
-              const bbb = padded.slice(9, 12);
-              const base = `https://media.braceletbookcdn.com/patterns/000/000/${aaa}/${bbb}/${padded}`;
-              return (
-                <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+            {/* Pattern Preview */}
+            {patternData && (
+              <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+                <div className="flex items-center justify-between">
                   <p className="text-xs text-muted-foreground font-medium">Pattern Preview</p>
-                  <div className="flex items-center gap-4 overflow-x-auto">
-                    <img
-                      src={`${base}/preview.png`}
-                      alt="Preview"
-                      className="h-10 w-auto object-contain"
-                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                    />
-                    <img
-                      src={`${base}/pattern.png`}
-                      alt="Pattern"
-                      className="h-24 w-auto object-contain opacity-80"
-                      onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                    />
+                  <div className="flex gap-2 text-xs text-muted-foreground">
+                    <span>{patternData.strings} strings</span>
+                    <span>{patternData.rows} rows</span>
+                    <span>{patternData.colors} colors</span>
                   </div>
                 </div>
-              );
-            })()}
+                <div className="flex items-center gap-4 overflow-x-auto">
+                  <img src={patternData.previewImageUrl} alt="Preview" className="h-10 w-auto object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                  <img src={patternData.patternImageUrl} alt="Pattern" className="h-24 w-auto object-contain opacity-80" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
+                </div>
+              </div>
+            )}
             <div className="space-y-2">
               <Label>Pattern URL</Label>
               <Input value={patternUrl} onChange={(e) => setPatternUrl(e.target.value)} />
@@ -263,47 +314,101 @@ export default function EditBracelet() {
           </CardContent>
         </Card>
 
-        {/* Colors */}
+        {/* Colors from Thread Library */}
         <Card>
-          <CardHeader><CardTitle className="text-base">Colors</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              Colors
+              {maxColors && (
+                <Badge variant="outline" className="text-xs font-normal">
+                  {colors.length}/{maxColors} strings
+                </Badge>
+              )}
+            </CardTitle>
+            <CardDescription>
+              Select colors from your thread library.
+            </CardDescription>
+          </CardHeader>
           <CardContent className="space-y-4">
             {colors.length > 0 && (
               <div className="flex flex-wrap gap-2">
-                {colors.map((color, i) => (
-                  <div key={i} className="flex items-center gap-1.5 bg-secondary rounded-full pl-1 pr-2 py-1">
-                    <div className="w-6 h-6 rounded-full border-2 border-white shadow-sm" style={{ backgroundColor: color }} />
-                    <span className="text-xs font-mono">{color}</span>
-                    <button type="button" onClick={() => removeColor(color)} className="text-muted-foreground hover:text-foreground">
-                      <X className="h-3 w-3" />
-                    </button>
+                {colors.map((color, i) => {
+                  const thread = threads?.find((t) => t.colorHex === color);
+                  return (
+                    <div key={i} className="flex items-center gap-1.5 bg-secondary rounded-full pl-1 pr-2 py-1">
+                      <div className="w-6 h-6 rounded-full border-2 border-white shadow-sm" style={{ backgroundColor: color }} />
+                      <span className="text-xs">{thread ? thread.colorName : color}</span>
+                      {thread && (thread as any).threadType !== "regular" && (
+                        <span className="text-xs">{THREAD_TYPE_ICONS[(thread as any).threadType] || ""}</span>
+                      )}
+                      <button type="button" onClick={() => removeColor(color)} className="text-muted-foreground hover:text-foreground">
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {threads && threads.length > 0 ? (
+              <div className="space-y-3">
+                {Object.entries(threadsByType).map(([type, typeThreads]) => (
+                  <div key={type}>
+                    <p className="text-xs text-muted-foreground mb-1.5 flex items-center gap-1">
+                      {THREAD_TYPE_ICONS[type] || ""} {THREAD_TYPE_LABELS[type] || type}
+                      <span className="opacity-60">({typeThreads.length})</span>
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {typeThreads.map((thread) => {
+                        const isSelected = colors.includes(thread.colorHex);
+                        const isDisabled = !isSelected && maxColors !== null && colors.length >= maxColors;
+                        return (
+                          <Tooltip key={thread.id}>
+                            <TooltipTrigger asChild>
+                              <button
+                                type="button"
+                                onClick={() => isSelected ? removeColor(thread.colorHex) : addColor(thread.colorHex)}
+                                disabled={isDisabled}
+                                className={`w-8 h-8 rounded-full border-2 transition-all relative ${
+                                  isSelected
+                                    ? "border-primary ring-2 ring-primary/30 scale-110"
+                                    : isDisabled
+                                      ? "border-muted opacity-40 cursor-not-allowed"
+                                      : "border-white shadow-sm hover:scale-110"
+                                }`}
+                                style={{ backgroundColor: thread.colorHex }}
+                              >
+                                {type === "glitter" && (
+                                  <Sparkles className="absolute -top-1 -right-1 h-3 w-3 text-yellow-500" />
+                                )}
+                                {type === "multicolor" && (
+                                  <div className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 flex gap-px">
+                                    {((thread as any).secondaryColors || []).slice(0, 3).map((sc: string, idx: number) => (
+                                      <div key={idx} className="w-1.5 h-1.5 rounded-full border border-white" style={{ backgroundColor: sc }} />
+                                    ))}
+                                  </div>
+                                )}
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="font-medium">{thread.colorName}</p>
+                              {thread.brand && <p className="text-xs opacity-70">{thread.brand} {thread.colorCode || ""}</p>}
+                            </TooltipContent>
+                          </Tooltip>
+                        );
+                      })}
+                    </div>
                   </div>
                 ))}
               </div>
+            ) : (
+              <div className="text-center py-4 border border-dashed rounded-lg">
+                <p className="text-sm text-muted-foreground mb-2">No threads in your library yet.</p>
+                <Button type="button" variant="outline" size="sm" onClick={() => setLocation("/threads")}>
+                  <Plus className="h-3 w-3 mr-1" /> Add Threads
+                </Button>
+              </div>
             )}
-            <div>
-              <p className="text-xs text-muted-foreground mb-2">Click to add colors:</p>
-              <div className="flex flex-wrap gap-2">
-                {PRESET_COLORS.map((color) => (
-                  <button
-                    key={color} type="button" onClick={() => addColor(color)}
-                    className={`w-7 h-7 rounded-full border-2 transition-all hover:scale-110 ${colors.includes(color) ? "border-primary ring-2 ring-primary/30 scale-110" : "border-white shadow-sm"}`}
-                    style={{ backgroundColor: color }}
-                  />
-                ))}
-              </div>
-            </div>
-            <div className="flex gap-2 items-end">
-              <div className="space-y-1">
-                <Label className="text-xs">Custom Color</Label>
-                <div className="flex gap-2">
-                  <input type="color" value={customColor} onChange={(e) => setCustomColor(e.target.value)} className="w-10 h-10 rounded cursor-pointer border" />
-                  <Input value={customColor} onChange={(e) => setCustomColor(e.target.value)} className="w-24 font-mono text-sm" />
-                </div>
-              </div>
-              <Button type="button" variant="outline" size="sm" onClick={() => addColor(customColor)}>
-                <Plus className="h-3 w-3 mr-1" /> Add
-              </Button>
-            </div>
           </CardContent>
         </Card>
 
@@ -371,20 +476,36 @@ export default function EditBracelet() {
 
         {/* Measurements */}
         <Card>
-          <CardHeader><CardTitle className="text-base">Measurements</CardTitle></CardHeader>
+          <CardHeader>
+            <CardTitle className="text-base flex items-center gap-2">
+              Measurements
+              <Tooltip>
+                <TooltipTrigger>
+                  <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                </TooltipTrigger>
+                <TooltipContent className="max-w-xs">
+                  <p>Recording your measurements helps the String Calculator learn and give better estimates for future bracelets with the same pattern.</p>
+                </TooltipContent>
+              </Tooltip>
+            </CardTitle>
+          </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Final Length (cm)</Label>
-                <Input type="number" step="0.1" min="0" value={finalLengthCm} onChange={(e) => setFinalLengthCm(e.target.value)} />
+                <Label>String Cut Length (cm)</Label>
+                <Input type="number" step="0.1" min="0" value={stringLengthCm} onChange={(e) => setStringLengthCm(e.target.value)} placeholder="How long you cut each string" />
               </div>
               <div className="space-y-2">
-                <Label>String Length (cm)</Label>
-                <Input type="number" step="0.1" min="0" value={stringLengthCm} onChange={(e) => setStringLengthCm(e.target.value)} />
+                <Label>Final Bracelet Length (cm)</Label>
+                <Input type="number" step="0.1" min="0" value={finalLengthCm} onChange={(e) => setFinalLengthCm(e.target.value)} placeholder="Finished bracelet length" />
               </div>
               <div className="space-y-2">
                 <Label>Number of Strings</Label>
-                <Input type="number" min="0" value={numberOfStrings} onChange={(e) => setNumberOfStrings(e.target.value)} />
+                <Input type="number" min="0" value={numberOfStrings} onChange={(e) => setNumberOfStrings(e.target.value)} placeholder="Auto-fills from pattern" />
+              </div>
+              <div className="space-y-2">
+                <Label>Leftover String (cm)</Label>
+                <Input type="number" step="0.1" min="0" value={leftoverStringCm} onChange={(e) => setLeftoverStringCm(e.target.value)} placeholder="How much was left over" />
               </div>
             </div>
           </CardContent>
@@ -424,7 +545,10 @@ export default function EditBracelet() {
 
         <div className="flex gap-3 justify-end">
           <Button type="button" variant="outline" onClick={() => setLocation("/")}>Cancel</Button>
-          <Button type="submit" disabled={isSubmitting}>{isSubmitting ? "Saving..." : "Update Bracelet"}</Button>
+          <Button type="submit" disabled={isSubmitting} className="gap-2">
+            {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
+            {isSubmitting ? "Saving..." : "Update Bracelet"}
+          </Button>
         </div>
       </form>
     </div>

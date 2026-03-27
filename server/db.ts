@@ -110,6 +110,7 @@ export async function listBracelets(
     difficulty?: string;
     rating?: number;
     outcome?: string;
+    status?: string;
     color?: string;
     dateFrom?: Date;
     dateTo?: Date;
@@ -136,6 +137,9 @@ export async function listBracelets(
   if (filters?.outcome) {
     conditions.push(eq(bracelets.outcome, filters.outcome as any));
   }
+  if (filters?.status) {
+    conditions.push(eq(bracelets.status, filters.status as any));
+  }
   if (filters?.color) {
     conditions.push(sql`JSON_CONTAINS(${bracelets.colors}, ${JSON.stringify(filters.color)})`);
   }
@@ -155,7 +159,9 @@ export async function listBracelets(
           ? bracelets.rating
           : filters?.sortBy === "difficulty"
             ? bracelets.difficulty
-            : bracelets.createdAt;
+            : filters?.sortBy === "status"
+              ? bracelets.status
+              : bracelets.createdAt;
 
   const orderFn = filters?.sortOrder === "asc" ? asc : desc;
 
@@ -181,6 +187,32 @@ export async function deleteBracelet(id: number, userId: number) {
   if (!db) throw new Error("Database not available");
   await db.delete(bracelets).where(and(eq(bracelets.id, id), eq(bracelets.userId, userId)));
   return { success: true };
+}
+
+/**
+ * Get historical string usage data for a specific pattern.
+ * Used by the string calculator to learn from past bracelets.
+ */
+export async function getPatternHistory(userId: number, patternNumber: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+  const result = await db
+    .select({
+      finalLengthCm: bracelets.finalLengthCm,
+      stringLengthCm: bracelets.stringLengthCm,
+      leftoverStringCm: bracelets.leftoverStringCm,
+      numberOfStrings: bracelets.numberOfStrings,
+    })
+    .from(bracelets)
+    .where(
+      and(
+        eq(bracelets.userId, userId),
+        eq(bracelets.patternNumber, patternNumber),
+        sql`${bracelets.stringLengthCm} IS NOT NULL`,
+        sql`${bracelets.finalLengthCm} IS NOT NULL`
+      )
+    );
+  return result;
 }
 
 export async function getBraceletStats(userId: number) {
@@ -238,6 +270,12 @@ export async function getBraceletStats(userId: number) {
     }
   }
 
+  // Status distribution
+  const statusDist: Record<string, number> = {};
+  for (const b of allBracelets) {
+    statusDist[b.status] = (statusDist[b.status] || 0) + 1;
+  }
+
   // Monthly trend
   const monthlyTrend: Record<string, number> = {};
   for (const b of allBracelets) {
@@ -253,6 +291,7 @@ export async function getBraceletStats(userId: number) {
     difficultyDistribution: difficultyDist,
     outcomeDistribution: outcomeDist,
     ratingDistribution: ratingDist,
+    statusDistribution: statusDist,
     monthlyTrend,
   };
 }

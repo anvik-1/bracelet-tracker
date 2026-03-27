@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
   DialogContent,
@@ -10,7 +11,14 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Search, Plus, Edit, Trash2, Palette } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Search, Plus, Edit, Trash2, Palette, X, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
@@ -23,6 +31,21 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+
+const THREAD_TYPES = [
+  { value: "regular", label: "Regular", icon: "" },
+  { value: "glitter", label: "Glitter", icon: "✨" },
+  { value: "metallic", label: "Metallic", icon: "🪙" },
+  { value: "glow_in_dark", label: "Glow in Dark", icon: "🌙" },
+  { value: "multicolor", label: "Multicolor", icon: "🌈" },
+];
+
+const THREAD_TYPE_LABELS: Record<string, string> = Object.fromEntries(
+  THREAD_TYPES.map((t) => [t.value, t.label])
+);
+const THREAD_TYPE_ICONS: Record<string, string> = Object.fromEntries(
+  THREAD_TYPES.map((t) => [t.value, t.icon])
+);
 
 export default function ThreadLibrary() {
   const [search, setSearch] = useState("");
@@ -37,6 +60,9 @@ export default function ThreadLibrary() {
   const [colorCode, setColorCode] = useState("");
   const [quantity, setQuantity] = useState("1");
   const [notes, setNotes] = useState("");
+  const [threadType, setThreadType] = useState("regular");
+  const [secondaryColors, setSecondaryColors] = useState<string[]>([]);
+  const [newSecondaryColor, setNewSecondaryColor] = useState("#0000FF");
 
   const { data: threads, isLoading } = trpc.thread.list.useQuery(
     search ? { search } : undefined
@@ -78,6 +104,9 @@ export default function ThreadLibrary() {
     setColorCode("");
     setQuantity("1");
     setNotes("");
+    setThreadType("regular");
+    setSecondaryColors([]);
+    setNewSecondaryColor("#0000FF");
   };
 
   const openEdit = (thread: any) => {
@@ -88,6 +117,8 @@ export default function ThreadLibrary() {
     setColorCode(thread.colorCode || "");
     setQuantity(thread.quantity?.toString() || "1");
     setNotes(thread.notes || "");
+    setThreadType(thread.threadType || "regular");
+    setSecondaryColors(thread.secondaryColors || []);
     setShowForm(true);
   };
 
@@ -104,6 +135,8 @@ export default function ThreadLibrary() {
       colorCode: colorCode || null,
       quantity: parseInt(quantity) || 1,
       notes: notes || null,
+      threadType: threadType as any,
+      secondaryColors: threadType === "multicolor" ? secondaryColors : [],
     };
     if (editId) {
       updateMutation.mutate({ id: editId, ...data });
@@ -112,12 +145,22 @@ export default function ThreadLibrary() {
     }
   };
 
-  // Group threads by brand
-  const groupedThreads = threads?.reduce(
+  const addSecondaryColor = () => {
+    if (!secondaryColors.includes(newSecondaryColor)) {
+      setSecondaryColors([...secondaryColors, newSecondaryColor]);
+    }
+  };
+
+  const removeSecondaryColor = (color: string) => {
+    setSecondaryColors(secondaryColors.filter((c) => c !== color));
+  };
+
+  // Group threads by type then brand
+  const groupedByType = threads?.reduce(
     (acc, thread) => {
-      const key = thread.brand || "Unbranded";
-      if (!acc[key]) acc[key] = [];
-      acc[key].push(thread);
+      const type = (thread as any).threadType || "regular";
+      if (!acc[type]) acc[type] = [];
+      acc[type].push(thread);
       return acc;
     },
     {} as Record<string, typeof threads>
@@ -166,41 +209,84 @@ export default function ThreadLibrary() {
           ))}
         </div>
       ) : threads && threads.length > 0 ? (
-        <div className="space-y-6">
-          {groupedThreads &&
-            Object.entries(groupedThreads).map(([brandName, brandThreads]) => (
-              <div key={brandName}>
-                <h3 className="text-sm font-medium text-muted-foreground mb-3">{brandName}</h3>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-                  {brandThreads?.map((thread) => (
-                    <Card key={thread.id} className="group hover:shadow-md transition-all">
-                      <CardContent className="pt-4 pb-3 text-center relative">
-                        <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button onClick={() => openEdit(thread)} className="p-1 rounded hover:bg-accent">
-                            <Edit className="h-3 w-3 text-muted-foreground" />
-                          </button>
-                          <button onClick={() => setDeleteId(thread.id)} className="p-1 rounded hover:bg-accent">
-                            <Trash2 className="h-3 w-3 text-destructive" />
-                          </button>
+        <div className="space-y-8">
+          {groupedByType &&
+            Object.entries(groupedByType).map(([type, typeThreads]) => {
+              // Sub-group by brand
+              const byBrand = typeThreads?.reduce(
+                (acc, t) => {
+                  const key = t.brand || "Unbranded";
+                  if (!acc[key]) acc[key] = [];
+                  acc[key].push(t);
+                  return acc;
+                },
+                {} as Record<string, typeof typeThreads>
+              );
+
+              return (
+                <div key={type}>
+                  <div className="flex items-center gap-2 mb-4">
+                    <span className="text-lg">{THREAD_TYPE_ICONS[type]}</span>
+                    <h2 className="text-lg font-semibold" style={{ fontFamily: "var(--font-heading)" }}>
+                      {THREAD_TYPE_LABELS[type] || type}
+                    </h2>
+                    <Badge variant="secondary" className="text-xs">
+                      {typeThreads?.length}
+                    </Badge>
+                  </div>
+                  {byBrand &&
+                    Object.entries(byBrand).map(([brandName, brandThreads]) => (
+                      <div key={brandName} className="mb-4">
+                        <h3 className="text-sm font-medium text-muted-foreground mb-2 ml-1">{brandName}</h3>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+                          {brandThreads?.map((thread) => (
+                            <Card key={thread.id} className="group hover:shadow-md transition-all">
+                              <CardContent className="pt-4 pb-3 text-center relative">
+                                <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <button onClick={() => openEdit(thread)} className="p-1 rounded hover:bg-accent">
+                                    <Edit className="h-3 w-3 text-muted-foreground" />
+                                  </button>
+                                  <button onClick={() => setDeleteId(thread.id)} className="p-1 rounded hover:bg-accent">
+                                    <Trash2 className="h-3 w-3 text-destructive" />
+                                  </button>
+                                </div>
+                                <div className="relative inline-block mb-2">
+                                  <div
+                                    className="w-12 h-12 rounded-full border-2 border-white shadow-md"
+                                    style={{ backgroundColor: thread.colorHex }}
+                                  />
+                                  {type === "glitter" && (
+                                    <Sparkles className="absolute -top-1 -right-1 h-4 w-4 text-yellow-500" />
+                                  )}
+                                  {type === "multicolor" && (thread as any).secondaryColors?.length > 0 && (
+                                    <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 flex gap-0.5">
+                                      {((thread as any).secondaryColors as string[]).slice(0, 4).map((sc, idx) => (
+                                        <div
+                                          key={idx}
+                                          className="w-3 h-3 rounded-full border border-white shadow-sm"
+                                          style={{ backgroundColor: sc }}
+                                        />
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                                <p className="text-sm font-medium truncate">{thread.colorName}</p>
+                                <p className="text-xs text-muted-foreground font-mono">{thread.colorHex}</p>
+                                {thread.colorCode && (
+                                  <p className="text-xs text-muted-foreground mt-0.5">#{thread.colorCode}</p>
+                                )}
+                                {thread.quantity != null && thread.quantity > 1 && (
+                                  <p className="text-xs text-muted-foreground mt-0.5">Qty: {thread.quantity}</p>
+                                )}
+                              </CardContent>
+                            </Card>
+                          ))}
                         </div>
-                        <div
-                          className="w-12 h-12 rounded-full mx-auto border-2 border-white shadow-md mb-2"
-                          style={{ backgroundColor: thread.colorHex }}
-                        />
-                        <p className="text-sm font-medium truncate">{thread.colorName}</p>
-                        <p className="text-xs text-muted-foreground font-mono">{thread.colorHex}</p>
-                        {thread.colorCode && (
-                          <p className="text-xs text-muted-foreground mt-0.5">#{thread.colorCode}</p>
-                        )}
-                        {thread.quantity != null && thread.quantity > 1 && (
-                          <p className="text-xs text-muted-foreground mt-0.5">Qty: {thread.quantity}</p>
-                        )}
-                      </CardContent>
-                    </Card>
-                  ))}
+                      </div>
+                    ))}
                 </div>
-              </div>
-            ))}
+              );
+            })}
         </div>
       ) : (
         <Card className="border-dashed">
@@ -219,7 +305,7 @@ export default function ThreadLibrary() {
 
       {/* Add/Edit Dialog */}
       <Dialog open={showForm} onOpenChange={() => resetForm()}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editId ? "Edit Thread" : "Add Thread"}</DialogTitle>
           </DialogHeader>
@@ -239,10 +325,66 @@ export default function ThreadLibrary() {
                 <Input value={colorName} onChange={(e) => setColorName(e.target.value)} placeholder="e.g., Crimson Red" required />
               </div>
             </div>
-            <div className="space-y-2">
-              <Label>Hex Code</Label>
-              <Input value={colorHex} onChange={(e) => setColorHex(e.target.value)} placeholder="#FF0000" className="font-mono" />
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Hex Code</Label>
+                <Input value={colorHex} onChange={(e) => setColorHex(e.target.value)} placeholder="#FF0000" className="font-mono" />
+              </div>
+              <div className="space-y-2">
+                <Label>Thread Type</Label>
+                <Select value={threadType} onValueChange={setThreadType}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {THREAD_TYPES.map((t) => (
+                      <SelectItem key={t.value} value={t.value}>
+                        {t.icon} {t.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
+
+            {/* Secondary colors for multicolor threads */}
+            {threadType === "multicolor" && (
+              <div className="space-y-2 rounded-lg border p-3 bg-muted/30">
+                <Label className="text-sm">Secondary Colors</Label>
+                <p className="text-xs text-muted-foreground">Add the other colors in this multicolor thread.</p>
+                {secondaryColors.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {secondaryColors.map((sc, i) => (
+                      <div key={i} className="flex items-center gap-1 bg-background rounded-full pl-1 pr-2 py-0.5 border">
+                        <div className="w-5 h-5 rounded-full border" style={{ backgroundColor: sc }} />
+                        <span className="text-xs font-mono">{sc}</span>
+                        <button type="button" onClick={() => removeSecondaryColor(sc)}>
+                          <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="flex gap-2 items-end mt-2">
+                  <input
+                    type="color"
+                    value={newSecondaryColor}
+                    onChange={(e) => setNewSecondaryColor(e.target.value)}
+                    className="w-8 h-8 rounded cursor-pointer border"
+                  />
+                  <Input
+                    value={newSecondaryColor}
+                    onChange={(e) => setNewSecondaryColor(e.target.value)}
+                    className="w-24 font-mono text-sm"
+                  />
+                  <Button type="button" variant="outline" size="sm" onClick={addSecondaryColor}>
+                    <Plus className="h-3 w-3 mr-1" /> Add
+                  </Button>
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Brand</Label>

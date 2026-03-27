@@ -23,3 +23,13 @@
 - [x] Edit Bracelet form: show pattern preview when pattern number is entered
 - [x] Bracelet Detail page: show full pattern diagram from BraceletBook
 - [x] Unit tests for BraceletBook integration (9 tests for URL generation and string calculation)
+- [x] Auto-fill bracelet name from BraceletBook pattern or remove name requirement
+- [x] Add status field to bracelets: completed / want to do / in progress / frogged / gifted
+- [x] Sort/filter bracelets by status on home page (status tabs)
+- [x] Update measurements section to record actual string used + final length + leftover for calculator learning
+- [x] String calculator: incorporate historical data from past bracelets to improve estimates (personal recommendation)
+- [x] Colors in Add Bracelet form should only come from thread library (no preset palette)
+- [x] Limit color selection to the number of strings the pattern requires
+- [x] Add thread type/variant to thread library: regular, glitter, multicolor, metallic, glow-in-dark
+- [x] Multicolor threads: support multiple colors per thread entry (secondary colors)
+- [x] Updated unit tests for status, thread types, and leftover string (36 tests passing)

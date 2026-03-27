@@ -78,6 +78,7 @@ vi.mock("./db", () => {
     deleteThread: vi.fn(async (_id: number, _userId: number) => {
       return { success: true };
     }),
+    getPatternHistory: vi.fn(async () => []),
     // Keep user helpers for auth
     upsertUser: vi.fn(),
     getUserByOpenId: vi.fn(),
@@ -131,12 +132,13 @@ describe("bracelet router", () => {
     expect(result?.userId).toBe(1);
   });
 
-  it("creates a bracelet with all optional fields", async () => {
+  it("creates a bracelet with all optional fields including status and leftover", async () => {
     const ctx = createAuthContext();
     const caller = appRouter.createCaller(ctx);
 
     const result = await caller.bracelet.create({
       name: "Complex Pattern",
+      status: "in_progress",
       patternName: "Chevron",
       patternNumber: "12345",
       patternUrl: "https://braceletbook.com/pattern/12345",
@@ -151,12 +153,44 @@ describe("bracelet router", () => {
       finalLengthCm: 15.5,
       stringLengthCm: 80,
       numberOfStrings: 8,
+      leftoverStringCm: 12.5,
     });
 
     expect(result).toBeDefined();
     expect(result?.patternName).toBe("Chevron");
     expect(result?.difficulty).toBe("medium");
     expect(result?.rating).toBe(4);
+    expect(result?.status).toBe("in_progress");
+    expect(result?.leftoverStringCm).toBe(12.5);
+  });
+
+  it("creates a bracelet with status 'want_to_make' by default", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const result = await caller.bracelet.create({
+      name: "Wishlist Bracelet",
+    });
+
+    expect(result).toBeDefined();
+    expect(result?.status).toBe("want_to_make");
+  });
+
+  it("rejects bracelet with invalid status", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(
+      caller.bracelet.create({ name: "Test", status: "invalid_status" as any })
+    ).rejects.toThrow();
+  });
+
+  it("lists bracelets with status filter", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const result = await caller.bracelet.list({ status: "in_progress" });
+    expect(Array.isArray(result)).toBe(true);
   });
 
   it("rejects bracelet with empty name", async () => {
@@ -273,6 +307,65 @@ describe("thread router", () => {
     expect(result).toBeDefined();
     expect(result?.brand).toBe("DMC");
     expect(result?.quantity).toBe(3);
+  });
+
+  it("creates a glitter thread", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const result = await caller.thread.create({
+      colorName: "Gold Glitter",
+      colorHex: "#FFD700",
+      brand: "DMC",
+      threadType: "glitter",
+    });
+
+    expect(result).toBeDefined();
+    expect(result?.threadType).toBe("glitter");
+  });
+
+  it("creates a multicolor thread with secondary colors", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const result = await caller.thread.create({
+      colorName: "Rainbow Variegated",
+      colorHex: "#FF0000",
+      brand: "DMC",
+      threadType: "multicolor",
+      secondaryColors: ["#00FF00", "#0000FF", "#FFFF00"],
+    });
+
+    expect(result).toBeDefined();
+    expect(result?.threadType).toBe("multicolor");
+    expect(result?.secondaryColors).toEqual(["#00FF00", "#0000FF", "#FFFF00"]);
+  });
+
+  it("rejects thread with invalid thread type", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(
+      caller.thread.create({
+        colorName: "Bad Type",
+        colorHex: "#FF0000",
+        threadType: "sparkle" as any,
+      })
+    ).rejects.toThrow();
+  });
+
+  it("rejects secondary colors with invalid hex", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(
+      caller.thread.create({
+        colorName: "Bad Secondary",
+        colorHex: "#FF0000",
+        threadType: "multicolor",
+        secondaryColors: ["not-hex"],
+      })
+    ).rejects.toThrow();
   });
 
   it("rejects thread with invalid hex color", async () => {
