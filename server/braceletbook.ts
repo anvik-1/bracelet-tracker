@@ -310,55 +310,54 @@ function extractString(html: string, regex: RegExp): string | null {
 /**
  * Calculate recommended string lengths PER STRING for a pattern.
  *
- * Each string ties a different number of knots, so each needs a different length.
- * The working string (tying knots) consumes more thread than the passive string.
+ * Uses a multiplier-based approach grounded in the standard bracelet-making
+ * rule of thumb: cut strings 3-5x the desired bracelet length.
  *
- * Formula per string:
- *   length = desiredBraceletLength
- *          + (knotsTied * knotConsumptionCm)  // wrapping uses thread
- *          + tieOffLength                      // for start/end knots
+ * The base multiplier (3.5x) is adjusted per string based on how many knots
+ * that string ties relative to the average. Strings that tie more knots
+ * consume more thread (the working string wraps around the passive string),
+ * so they get a higher multiplier.
  *
- * The knot counts from the SVG represent ONE pattern repeat.
- * For a full bracelet, we scale by how many repeats fit in the desired length.
+ * Multiplier range: 2.5x (mostly passive) to 5.0x (heavy knotter).
+ * Plus a fixed tie-off allowance for start/end knots (~15cm / 6 inches).
  */
 export function calculatePerStringLengths(params: {
   desiredLengthCm: number;
   perStringData: Array<{ svgId: string; colorLetter: string; knotsTied: number; knotsOn: number }>;
   rows: number;
   numStrings: number;
-  /** Optional: historical data from past bracelets with this pattern */
+  /** Optional: cm adjustment from historical data (negative = reduce) */
   historicalAdjustment?: number;
 }): {
   perString: StringKnotData[];
   averageLengthCm: number;
   explanation: string;
 } {
-  const { desiredLengthCm, perStringData, rows, numStrings, historicalAdjustment } = params;
+  const { desiredLengthCm, perStringData, numStrings, historicalAdjustment } = params;
 
-  // Estimate how many pattern repeats fit in the desired length
-  // A typical pattern repeat produces ~1-2cm of bracelet length per row
-  // Normal patterns: ~0.15cm per row of knots
-  const cmPerRow = 0.15;
-  const patternRepeatLengthCm = rows * cmPerRow;
-  const repeats = patternRepeatLengthCm > 0 ? desiredLengthCm / patternRepeatLengthCm : 1;
-
-  const knotConsumptionCm = 0.35; // cm of thread consumed per half-hitch tied
-  const tieOffLengthCm = 12; // extra for tying knots at start/end
-
+  const baseMultiplier = 3.5; // standard rule of thumb for average string
+  const tieOffLengthCm = 15; // ~6 inches for tying knots at start/end
   const adjustment = historicalAdjustment || 0;
 
+  // Calculate average knots tied across all strings
+  const totalKnotsTied = perStringData.reduce((sum, s) => sum + s.knotsTied, 0);
+  const avgKnotsTied = perStringData.length > 0 ? totalKnotsTied / perStringData.length : 1;
+
   const perString: StringKnotData[] = perStringData.map((s, i) => {
-    // Scale knot counts by number of repeats
-    const scaledKnotsTied = s.knotsTied * repeats;
-    const scaledKnotsOn = s.knotsOn * repeats;
+    // Calculate this string's knot ratio relative to average
+    const ratio = avgKnotsTied > 0 ? s.knotsTied / avgKnotsTied : 1;
 
-    // Working string uses more thread per knot it ties
-    const knotLength = scaledKnotsTied * knotConsumptionCm;
+    // Scale multiplier: ratio=1 (average) -> 3.5x, higher ratio -> higher multiplier
+    // Each unit of ratio above/below average shifts multiplier by 1.0x
+    let multiplier = baseMultiplier + (ratio - 1) * 1.0;
 
-    // Total recommended length
-    let recommended = desiredLengthCm + knotLength + tieOffLengthCm + adjustment;
+    // Clamp to reasonable range
+    multiplier = Math.max(2.5, Math.min(5.0, multiplier));
 
-    // Minimum safety: at least 2x the desired length
+    // Calculate recommended length
+    let recommended = desiredLengthCm * multiplier + tieOffLengthCm + adjustment;
+
+    // Safety floor: never less than 2x desired length
     recommended = Math.max(recommended, desiredLengthCm * 2);
 
     return {
@@ -376,17 +375,26 @@ export function calculatePerStringLengths(params: {
     ? Math.ceil(perString.reduce((sum, s) => sum + s.recommendedLengthCm, 0) / perString.length)
     : 0;
 
-  const maxKnotter = perString.reduce((max, s) => (s.knotsTied > max.knotsTied ? s : max), perString[0]);
-  const minKnotter = perString.reduce((min, s) => (s.knotsTied < min.knotsTied ? s : min), perString[0]);
+  const maxKnotter = perString.length > 0
+    ? perString.reduce((max, s) => (s.knotsTied > max.knotsTied ? s : max), perString[0])
+    : null;
+  const minKnotter = perString.length > 0
+    ? perString.reduce((min, s) => (s.knotsTied < min.knotsTied ? s : min), perString[0])
+    : null;
 
   const explanation = [
-    `For a ${desiredLengthCm}cm bracelet with ${numStrings} strings and ${rows} rows per repeat (~${repeats.toFixed(1)} repeats needed):`,
-    `String #${(maxKnotter?.index ?? 0) + 1} ties the most knots (${maxKnotter?.knotsTied ?? 0}/repeat) and needs ${maxKnotter?.recommendedLengthCm ?? 0}cm.`,
-    `String #${(minKnotter?.index ?? 0) + 1} ties the fewest knots (${minKnotter?.knotsTied ?? 0}/repeat) and needs ${minKnotter?.recommendedLengthCm ?? 0}cm.`,
+    `For a ${(desiredLengthCm / 2.54).toFixed(1)}" bracelet with ${numStrings} strings:`,
+    `Base multiplier is 3.5x, adjusted per string by knot ratio.`,
+    maxKnotter
+      ? `String #${maxKnotter.index + 1} ties the most (${maxKnotter.knotsTied} knots) → ${maxKnotter.recommendedLengthCm}cm.`
+      : "",
+    minKnotter
+      ? `String #${minKnotter.index + 1} ties the fewest (${minKnotter.knotsTied} knots) → ${minKnotter.recommendedLengthCm}cm.`
+      : "",
     historicalAdjustment
       ? `Adjusted by ${adjustment > 0 ? "+" : ""}${adjustment.toFixed(1)}cm based on your past bracelets.`
       : "Log your actual string usage to improve future estimates!",
-  ].join(" ");
+  ].filter(Boolean).join(" ");
 
   return { perString, averageLengthCm: avgLength, explanation };
 }

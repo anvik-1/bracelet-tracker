@@ -132,7 +132,7 @@ describe("calculatePerStringLengths", () => {
 
     expect(result.perString).toHaveLength(8);
     expect(result.averageLengthCm).toBeGreaterThan(0);
-    expect(result.explanation).toContain("15cm");
+    expect(result.explanation).toContain("bracelet");
   });
 
   it("gives longer lengths to strings that tie more knots", () => {
