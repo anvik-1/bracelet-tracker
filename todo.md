@@ -45,3 +45,11 @@
 - [x] Update Edit Bracelet form with per-string measurement inputs
 - [x] Update calculator learning to use per-string historical data for more precise adjustments
 - [x] Update tests for per-string measurements (49 tests passing)
+- [x] DMC color code auto-fill: enter a DMC number and auto-populate color name, hex, and brand
+- [x] Build DMC color lookup table with all 454 standard DMC floss colors
+- [x] Global units toggle: switch between inches and centimeters across the entire app
+- [x] Units toggle persists in localStorage
+- [x] Update String Calculator to respect units toggle
+- [x] Update Add/Edit Bracelet forms to respect units toggle
+- [x] Update Bracelet Detail page to respect units toggle
+- [x] All 49 tests passing

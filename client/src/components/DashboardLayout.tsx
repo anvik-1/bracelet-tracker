@@ -36,6 +36,7 @@ import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { Button } from "./ui/button";
+import { useUnits } from "@/contexts/UnitsContext";
 
 const menuItems = [
   { icon: Home, label: "My Bracelets", path: "/" },
@@ -49,6 +50,22 @@ const SIDEBAR_WIDTH_KEY = "sidebar-width";
 const DEFAULT_WIDTH = 260;
 const MIN_WIDTH = 200;
 const MAX_WIDTH = 400;
+
+function UnitsToggle() {
+  const { units, toggleUnits } = useUnits();
+  return (
+    <button
+      onClick={toggleUnits}
+      className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent/50 hover:text-foreground transition-colors w-full group-data-[collapsible=icon]:justify-center"
+      title={`Switch to ${units === 'cm' ? 'inches' : 'centimeters'}`}
+    >
+      <Settings className="h-3.5 w-3.5 shrink-0" />
+      <span className="group-data-[collapsible=icon]:hidden">
+        Units: <span className="font-semibold text-foreground">{units === 'cm' ? 'Centimeters' : 'Inches'}</span>
+      </span>
+    </button>
+  );
+}
 
 export default function DashboardLayout({
   children,
@@ -222,6 +239,10 @@ function DashboardLayoutContent({
           </SidebarContent>
 
           <SidebarFooter className="p-3">
+            {/* Units Toggle */}
+            <div className="px-1 mb-2 group-data-[collapsible=icon]:px-0">
+              <UnitsToggle />
+            </div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-3 rounded-lg px-1 py-1 hover:bg-accent/50 transition-colors w-full text-left group-data-[collapsible=icon]:justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-ring">

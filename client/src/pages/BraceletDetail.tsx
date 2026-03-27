@@ -27,6 +27,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useState } from "react";
+import { useUnits } from "@/contexts/UnitsContext";
 
 const difficultyColors: Record<string, string> = {
   beginner: "bg-green-100 text-green-700",
@@ -50,6 +51,7 @@ export default function BraceletDetail() {
   const [, setLocation] = useLocation();
   const [showDelete, setShowDelete] = useState(false);
   const utils = trpc.useUtils();
+  const { formatLength } = useUnits();
 
   const { data: bracelet, isLoading } = trpc.bracelet.getById.useQuery(
     { id: braceletId },
@@ -249,14 +251,14 @@ export default function BraceletDetail() {
                   <span className="text-xs text-muted-foreground">Final Length</span>
                   <p className="font-medium flex items-center gap-1.5">
                     <Ruler className="h-4 w-4 text-muted-foreground" />
-                    {bracelet.finalLengthCm} cm
+                    {formatLength(bracelet.finalLengthCm)}
                   </p>
                 </div>
               )}
               {bracelet.stringLengthCm != null && (
                 <div className="space-y-1">
                   <span className="text-xs text-muted-foreground">String Length</span>
-                  <p className="font-medium">{bracelet.stringLengthCm} cm</p>
+                  <p className="font-medium">{formatLength(bracelet.stringLengthCm)}</p>
                 </div>
               )}
               {bracelet.numberOfStrings != null && (

@@ -21,6 +21,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useUnits } from "@/contexts/UnitsContext";
 
 const THREAD_TYPE_LABELS: Record<string, string> = {
   regular: "Regular",
@@ -40,6 +41,7 @@ const THREAD_TYPE_ICONS: Record<string, string> = {
 export default function AddBracelet() {
   const [, setLocation] = useLocation();
   const utils = trpc.useUtils();
+  const { label: unitLabel, toCm, fromCm } = useUnits();
 
   const [name, setName] = useState("");
   const [status, setStatus] = useState("want_to_make");
@@ -198,11 +200,15 @@ export default function AddBracelet() {
       notes: notes || null,
       rating: rating ? parseInt(rating) : null,
       outcome: (outcome as any) || null,
-      finalLengthCm: finalLengthCm ? parseFloat(finalLengthCm) : null,
-      stringLengthCm: stringLengthCm ? parseFloat(stringLengthCm) : null,
+      finalLengthCm: finalLengthCm ? toCm(parseFloat(finalLengthCm)) : null,
+      stringLengthCm: stringLengthCm ? toCm(parseFloat(stringLengthCm)) : null,
       numberOfStrings: numberOfStrings ? parseInt(numberOfStrings) : null,
-      leftoverStringCm: leftoverStringCm ? parseFloat(leftoverStringCm) : null,
-      perStringMeasurements: perStringData.length > 0 ? perStringData : null,
+      leftoverStringCm: leftoverStringCm ? toCm(parseFloat(leftoverStringCm)) : null,
+      perStringMeasurements: perStringData.length > 0 ? perStringData.map(m => ({
+        ...m,
+        cutLengthCm: m.cutLengthCm != null ? toCm(m.cutLengthCm) : null,
+        leftoverCm: m.leftoverCm != null ? toCm(m.leftoverCm) : null,
+      })) : null,
     });
   };
 
@@ -582,7 +588,7 @@ export default function AddBracelet() {
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="finalLength">Final Bracelet Length (cm)</Label>
+                <Label htmlFor="finalLength">Final Bracelet Length ({unitLabel})</Label>
                 <Input
                   id="finalLength"
                   type="number"
@@ -605,7 +611,7 @@ export default function AddBracelet() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="stringLength">Uniform Cut Length (cm)</Label>
+                <Label htmlFor="stringLength">Uniform Cut Length ({unitLabel})</Label>
                 <Input
                   id="stringLength"
                   type="number"
@@ -640,8 +646,8 @@ export default function AddBracelet() {
                       <div className="grid grid-cols-[auto_2fr_1fr_1fr] gap-2 text-xs font-medium text-muted-foreground px-1">
                         <span className="w-8">#</span>
                         <span>Color</span>
-                        <span>Cut Length (cm)</span>
-                        <span>Leftover (cm)</span>
+                        <span>Cut Length ({unitLabel})</span>
+                        <span>Leftover ({unitLabel})</span>
                       </div>
                       {perStringMeasurements.map((m, i) => (
                         <div key={i} className="grid grid-cols-[auto_2fr_1fr_1fr] gap-2 items-center">
@@ -706,7 +712,7 @@ export default function AddBracelet() {
 
             {perStringMeasurements.length === 0 && (
               <div className="space-y-2">
-                <Label htmlFor="leftover">Leftover String (cm)</Label>
+                <Label htmlFor="leftover">Leftover String ({unitLabel})</Label>
                 <Input
                   id="leftover"
                   type="number"

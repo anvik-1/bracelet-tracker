@@ -18,8 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Plus, Edit, Trash2, Palette, X, Sparkles } from "lucide-react";
-import { useState } from "react";
+import { Search, Plus, Edit, Trash2, Palette, X, Sparkles, Zap } from "lucide-react";
+import { useState, useCallback } from "react";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -31,6 +31,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { lookupDmc, searchDmc } from "@shared/dmc-colors";
 
 const THREAD_TYPES = [
   { value: "regular", label: "Regular", icon: "" },
@@ -63,6 +64,11 @@ export default function ThreadLibrary() {
   const [threadType, setThreadType] = useState("regular");
   const [secondaryColors, setSecondaryColors] = useState<string[]>([]);
   const [newSecondaryColor, setNewSecondaryColor] = useState("#0000FF");
+
+  // DMC lookup state
+  const [dmcSearch, setDmcSearch] = useState("");
+  const [dmcSuggestions, setDmcSuggestions] = useState<Array<{ code: string; name: string; hex: string }>>([]);
+  const [showDmcSuggestions, setShowDmcSuggestions] = useState(false);
 
   const { data: threads, isLoading } = trpc.thread.list.useQuery(
     search ? { search } : undefined
@@ -107,6 +113,9 @@ export default function ThreadLibrary() {
     setThreadType("regular");
     setSecondaryColors([]);
     setNewSecondaryColor("#0000FF");
+    setDmcSearch("");
+    setDmcSuggestions([]);
+    setShowDmcSuggestions(false);
   };
 
   const openEdit = (thread: any) => {
@@ -119,6 +128,7 @@ export default function ThreadLibrary() {
     setNotes(thread.notes || "");
     setThreadType(thread.threadType || "regular");
     setSecondaryColors(thread.secondaryColors || []);
+    setDmcSearch("");
     setShowForm(true);
   };
 
@@ -153,6 +163,39 @@ export default function ThreadLibrary() {
 
   const removeSecondaryColor = (color: string) => {
     setSecondaryColors(secondaryColors.filter((c) => c !== color));
+  };
+
+  // DMC auto-fill handler
+  const handleDmcSearch = useCallback((query: string) => {
+    setDmcSearch(query);
+    if (query.trim().length === 0) {
+      setDmcSuggestions([]);
+      setShowDmcSuggestions(false);
+      return;
+    }
+
+    // Try exact match first
+    const exact = lookupDmc(query.trim());
+    if (exact) {
+      setDmcSuggestions([{ code: query.trim(), name: exact.name, hex: exact.hex }]);
+      setShowDmcSuggestions(true);
+      return;
+    }
+
+    // Otherwise search
+    const results = searchDmc(query.trim());
+    setDmcSuggestions(results);
+    setShowDmcSuggestions(results.length > 0);
+  }, []);
+
+  const applyDmcColor = (code: string, name: string, hex: string) => {
+    setColorName(name);
+    setColorHex(hex);
+    setBrand("DMC");
+    setColorCode(code);
+    setDmcSearch(code);
+    setShowDmcSuggestions(false);
+    toast.success(`DMC ${code} - ${name} applied!`);
   };
 
   // Group threads by type then brand
@@ -212,7 +255,6 @@ export default function ThreadLibrary() {
         <div className="space-y-8">
           {groupedByType &&
             Object.entries(groupedByType).map(([type, typeThreads]) => {
-              // Sub-group by brand
               const byBrand = typeThreads?.reduce(
                 (acc, t) => {
                   const key = t.brand || "Unbranded";
@@ -275,7 +317,7 @@ export default function ThreadLibrary() {
                                 {thread.colorCode && (
                                   <p className="text-xs text-muted-foreground mt-0.5">#{thread.colorCode}</p>
                                 )}
-                                {thread.quantity != null && thread.quantity > 1 && (
+                                {thread.quantity != null && (
                                   <p className="text-xs text-muted-foreground mt-0.5">Qty: {thread.quantity}</p>
                                 )}
                               </CardContent>
@@ -310,6 +352,45 @@ export default function ThreadLibrary() {
             <DialogTitle>{editId ? "Edit Thread" : "Add Thread"}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* DMC Quick Lookup */}
+            <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-2">
+              <div className="flex items-center gap-2 mb-1">
+                <Zap className="h-4 w-4 text-primary" />
+                <Label className="text-sm font-semibold text-primary">DMC Quick Lookup</Label>
+              </div>
+              <p className="text-xs text-muted-foreground">Enter a DMC color code or name to auto-fill all fields.</p>
+              <div className="relative">
+                <Input
+                  value={dmcSearch}
+                  onChange={(e) => handleDmcSearch(e.target.value)}
+                  onFocus={() => { if (dmcSuggestions.length > 0) setShowDmcSuggestions(true); }}
+                  placeholder="e.g., 321, 310, Red, Coral..."
+                  className="font-mono"
+                />
+                {showDmcSuggestions && dmcSuggestions.length > 0 && (
+                  <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-background border rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                    {dmcSuggestions.map((s) => (
+                      <button
+                        key={s.code}
+                        type="button"
+                        className="flex items-center gap-3 w-full px-3 py-2 hover:bg-accent text-left transition-colors"
+                        onClick={() => applyDmcColor(s.code, s.name, s.hex)}
+                      >
+                        <div
+                          className="w-6 h-6 rounded-full border shadow-sm shrink-0"
+                          style={{ backgroundColor: s.hex }}
+                        />
+                        <div className="min-w-0">
+                          <span className="text-sm font-mono font-medium">DMC {s.code}</span>
+                          <span className="text-xs text-muted-foreground ml-2">{s.name}</span>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
             <div className="flex gap-4 items-end">
               <div className="space-y-2">
                 <Label>Color</Label>

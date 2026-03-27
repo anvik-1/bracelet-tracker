@@ -12,15 +12,16 @@ import { Badge } from "@/components/ui/badge";
 import { Scissors, Calculator, ExternalLink, Loader2, AlertCircle, TrendingUp } from "lucide-react";
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
+import { useUnits } from "@/contexts/UnitsContext";
 
 export default function StringCalculator() {
   const [patternId, setPatternId] = useState("");
   const [desiredLength, setDesiredLength] = useState("");
-  const [unit, setUnit] = useState("cm");
+  const { units, label: unitLabel, toCm, fromCm, formatLength } = useUnits();
 
   const cleanPatternId = patternId.replace(/^#/, "").replace(/\D/g, "");
   const lengthNum = parseFloat(desiredLength);
-  const lengthCm = unit === "inches" ? lengthNum * 2.54 : lengthNum;
+  const lengthCm = toCm(lengthNum) ?? 0;
 
   const canCalculate = cleanPatternId.length > 0 && lengthNum > 0;
 
@@ -44,12 +45,7 @@ export default function StringCalculator() {
       })()
     : null;
 
-  const displayLength = (cm: number) => {
-    if (unit === "inches") {
-      return `${(cm / 2.54).toFixed(1)} in`;
-    }
-    return `${Math.ceil(cm)} cm`;
-  };
+  const displayLength = (cm: number) => formatLength(cm);
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -109,15 +105,9 @@ export default function StringCalculator() {
                   placeholder="e.g., 15"
                   className="flex-1"
                 />
-                <Select value={unit} onValueChange={setUnit}>
-                  <SelectTrigger className="w-24">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="cm">cm</SelectItem>
-                    <SelectItem value="inches">inches</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="flex items-center justify-center w-16 rounded-md border bg-muted/50 text-sm font-medium text-muted-foreground">
+                  {unitLabel}
+                </div>
               </div>
             </div>
           </div>

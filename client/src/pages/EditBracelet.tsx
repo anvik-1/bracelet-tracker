@@ -21,6 +21,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useUnits } from "@/contexts/UnitsContext";
 
 const THREAD_TYPE_LABELS: Record<string, string> = {
   regular: "Regular",
@@ -42,6 +43,7 @@ export default function EditBracelet() {
   const braceletId = parseInt(params.id || "0");
   const [, setLocation] = useLocation();
   const utils = trpc.useUtils();
+  const { label: unitLabel, toCm, fromCm } = useUnits();
 
   const { data: bracelet, isLoading: loadingBracelet } = trpc.bracelet.getById.useQuery(
     { id: braceletId },
@@ -116,10 +118,10 @@ export default function EditBracelet() {
       setNotes(bracelet.notes || "");
       setRating(bracelet.rating?.toString() || "");
       setOutcome(bracelet.outcome || "");
-      setFinalLengthCm(bracelet.finalLengthCm?.toString() || "");
-      setStringLengthCm(bracelet.stringLengthCm?.toString() || "");
+      setFinalLengthCm(bracelet.finalLengthCm ? (fromCm(bracelet.finalLengthCm) ?? 0).toFixed(1) : "");
+      setStringLengthCm(bracelet.stringLengthCm ? (fromCm(bracelet.stringLengthCm) ?? 0).toFixed(1) : "");
       setNumberOfStrings(bracelet.numberOfStrings?.toString() || "");
-      setLeftoverStringCm((bracelet as any).leftoverStringCm?.toString() || "");
+      setLeftoverStringCm((bracelet as any).leftoverStringCm ? (fromCm((bracelet as any).leftoverStringCm) ?? 0).toFixed(1) : "");
       // Load existing per-string measurements
       const existingPerString = (bracelet as any).perStringMeasurements;
       if (existingPerString && Array.isArray(existingPerString) && existingPerString.length > 0) {
@@ -128,8 +130,8 @@ export default function EditBracelet() {
             position: m.position ?? 0,
             colorLetter: m.colorLetter || "",
             colorHex: m.colorHex || "",
-            cutLengthCm: m.cutLengthCm?.toString() || "",
-            leftoverCm: m.leftoverCm?.toString() || "",
+            cutLengthCm: m.cutLengthCm ? (fromCm(m.cutLengthCm) ?? 0).toFixed(1) : "",
+            leftoverCm: m.leftoverCm ? (fromCm(m.leftoverCm) ?? 0).toFixed(1) : "",
           }))
         );
         setShowPerString(true);
@@ -239,11 +241,15 @@ export default function EditBracelet() {
       notes: notes || null,
       rating: rating ? parseInt(rating) : null,
       outcome: (outcome as any) || null,
-      finalLengthCm: finalLengthCm ? parseFloat(finalLengthCm) : null,
-      stringLengthCm: stringLengthCm ? parseFloat(stringLengthCm) : null,
+      finalLengthCm: finalLengthCm ? toCm(parseFloat(finalLengthCm)) : null,
+      stringLengthCm: stringLengthCm ? toCm(parseFloat(stringLengthCm)) : null,
       numberOfStrings: numberOfStrings ? parseInt(numberOfStrings) : null,
-      leftoverStringCm: leftoverStringCm ? parseFloat(leftoverStringCm) : null,
-      perStringMeasurements: perStringData.length > 0 ? perStringData : null,
+      leftoverStringCm: leftoverStringCm ? toCm(parseFloat(leftoverStringCm)) : null,
+      perStringMeasurements: perStringData.length > 0 ? perStringData.map(m => ({
+        ...m,
+        cutLengthCm: m.cutLengthCm != null ? toCm(m.cutLengthCm) : null,
+        leftoverCm: m.leftoverCm != null ? toCm(m.leftoverCm) : null,
+      })) : null,
     });
   };
 
@@ -537,7 +543,7 @@ export default function EditBracelet() {
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label>Final Bracelet Length (cm)</Label>
+                <Label>Final Bracelet Length ({unitLabel})</Label>
                 <Input type="number" step="0.1" min="0" value={finalLengthCm} onChange={(e) => setFinalLengthCm(e.target.value)} placeholder="Finished length" />
               </div>
               <div className="space-y-2">
@@ -545,7 +551,7 @@ export default function EditBracelet() {
                 <Input type="number" min="0" value={numberOfStrings} onChange={(e) => setNumberOfStrings(e.target.value)} placeholder="Auto-fills from pattern" />
               </div>
               <div className="space-y-2">
-                <Label>Uniform Cut Length (cm)</Label>
+                <Label>Uniform Cut Length ({unitLabel})</Label>
                 <Input type="number" step="0.1" min="0" value={stringLengthCm} onChange={(e) => setStringLengthCm(e.target.value)} placeholder="If all strings same length" />
               </div>
             </div>
@@ -572,8 +578,8 @@ export default function EditBracelet() {
                       <div className="grid grid-cols-[auto_2fr_1fr_1fr] gap-2 text-xs font-medium text-muted-foreground px-1">
                         <span className="w-8">#</span>
                         <span>Color</span>
-                        <span>Cut Length (cm)</span>
-                        <span>Leftover (cm)</span>
+                        <span>Cut Length ({unitLabel})</span>
+                        <span>Leftover ({unitLabel})</span>
                       </div>
                       {perStringMeasurements.map((m, i) => (
                         <div key={i} className="grid grid-cols-[auto_2fr_1fr_1fr] gap-2 items-center">
@@ -638,7 +644,7 @@ export default function EditBracelet() {
 
             {perStringMeasurements.length === 0 && (
               <div className="space-y-2">
-                <Label>Leftover String (cm)</Label>
+                <Label>Leftover String ({unitLabel})</Label>
                 <Input type="number" step="0.1" min="0" value={leftoverStringCm} onChange={(e) => setLeftoverStringCm(e.target.value)} placeholder="How much was left over (average)" />
               </div>
             )}
