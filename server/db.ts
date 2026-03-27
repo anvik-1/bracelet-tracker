@@ -202,14 +202,14 @@ export async function getPatternHistory(userId: number, patternNumber: string) {
       stringLengthCm: bracelets.stringLengthCm,
       leftoverStringCm: bracelets.leftoverStringCm,
       numberOfStrings: bracelets.numberOfStrings,
+      perStringMeasurements: bracelets.perStringMeasurements,
     })
     .from(bracelets)
     .where(
       and(
         eq(bracelets.userId, userId),
         eq(bracelets.patternNumber, patternNumber),
-        sql`${bracelets.stringLengthCm} IS NOT NULL`,
-        sql`${bracelets.finalLengthCm} IS NOT NULL`
+        sql`(${bracelets.stringLengthCm} IS NOT NULL OR ${bracelets.perStringMeasurements} IS NOT NULL)`
       )
     );
   return result;

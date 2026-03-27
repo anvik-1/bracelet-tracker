@@ -1,0 +1,1 @@
+ALTER TABLE `bracelets` ADD `perStringMeasurements` json;

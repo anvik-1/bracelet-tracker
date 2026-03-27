@@ -41,6 +41,13 @@ const braceletInput = z.object({
   stringLengthCm: z.number().min(0).optional().nullable(),
   numberOfStrings: z.number().int().min(0).optional().nullable(),
   leftoverStringCm: z.number().min(0).optional().nullable(),
+  perStringMeasurements: z.array(z.object({
+    position: z.number().int().min(0),
+    colorLetter: z.string().optional(),
+    colorHex: z.string().optional(),
+    cutLengthCm: z.number().min(0).nullable(),
+    leftoverCm: z.number().min(0).nullable(),
+  })).optional().nullable(),
 });
 
 const threadInput = z.object({
@@ -87,6 +94,7 @@ export const appRouter = router({
         stringLengthCm: input.stringLengthCm ?? null,
         numberOfStrings: input.numberOfStrings ?? null,
         leftoverStringCm: input.leftoverStringCm ?? null,
+        perStringMeasurements: input.perStringMeasurements ?? null,
       });
     }),
 
@@ -212,32 +220,63 @@ export const appRouter = router({
         let learningData = null;
 
         if (history.length > 0) {
-          const validHistory = history.filter(
-            (h) => h.stringLengthCm != null && h.finalLengthCm != null && h.finalLengthCm > 0
+          // Prefer per-string measurements for learning data
+          const withPerString = history.filter(
+            (h: any) => h.perStringMeasurements && Array.isArray(h.perStringMeasurements) && h.perStringMeasurements.length > 0
           );
-          if (validHistory.length > 0) {
-            // Calculate average leftover to adjust future estimates
-            const withLeftover = validHistory.filter((h) => h.leftoverStringCm != null);
-            if (withLeftover.length > 0) {
-              const avgLeftover = withLeftover.reduce((a, h) => a + (h.leftoverStringCm || 0), 0) / withLeftover.length;
-              // If average leftover > 5cm, reduce estimates
+
+          if (withPerString.length > 0) {
+            // Aggregate per-string leftover data across all historical bracelets
+            const allLeftovers: number[] = [];
+            for (const h of withPerString) {
+              const measurements = (h as any).perStringMeasurements as Array<{ leftoverCm: number | null }>;
+              for (const m of measurements) {
+                if (m.leftoverCm != null) allLeftovers.push(m.leftoverCm);
+              }
+            }
+            if (allLeftovers.length > 0) {
+              const avgLeftover = allLeftovers.reduce((a, b) => a + b, 0) / allLeftovers.length;
               if (avgLeftover > 5) {
                 historicalAdjustment = -(avgLeftover - 5);
               }
             }
 
-            const avgStringLength = validHistory.reduce((a, h) => a + (h.stringLengthCm || 0), 0) / validHistory.length;
-            const avgFinalLength = validHistory.reduce((a, h) => a + (h.finalLengthCm || 0), 0) / validHistory.length;
-            const avgLeftover = withLeftover.length > 0
-              ? withLeftover.reduce((a, h) => a + (h.leftoverStringCm || 0), 0) / withLeftover.length
-              : null;
-
             learningData = {
-              dataPoints: validHistory.length,
-              avgStringLengthCm: Math.round(avgStringLength * 10) / 10,
-              avgFinalLengthCm: Math.round(avgFinalLength * 10) / 10,
-              avgLeftoverCm: avgLeftover != null ? Math.round(avgLeftover * 10) / 10 : null,
+              dataPoints: withPerString.length,
+              perStringDataPoints: allLeftovers.length,
+              avgLeftoverCm: allLeftovers.length > 0
+                ? Math.round((allLeftovers.reduce((a, b) => a + b, 0) / allLeftovers.length) * 10) / 10
+                : null,
+              source: "per-string" as const,
             };
+          } else {
+            // Fall back to legacy uniform measurements
+            const validHistory = history.filter(
+              (h) => h.stringLengthCm != null && h.finalLengthCm != null && h.finalLengthCm > 0
+            );
+            if (validHistory.length > 0) {
+              const withLeftover = validHistory.filter((h) => h.leftoverStringCm != null);
+              if (withLeftover.length > 0) {
+                const avgLeftover = withLeftover.reduce((a, h) => a + (h.leftoverStringCm || 0), 0) / withLeftover.length;
+                if (avgLeftover > 5) {
+                  historicalAdjustment = -(avgLeftover - 5);
+                }
+              }
+
+              const avgStringLength = validHistory.reduce((a, h) => a + (h.stringLengthCm || 0), 0) / validHistory.length;
+              const avgFinalLength = validHistory.reduce((a, h) => a + (h.finalLengthCm || 0), 0) / validHistory.length;
+              const avgLeftover = withLeftover.length > 0
+                ? withLeftover.reduce((a, h) => a + (h.leftoverStringCm || 0), 0) / withLeftover.length
+                : null;
+
+              learningData = {
+                dataPoints: validHistory.length,
+                avgStringLengthCm: Math.round(avgStringLength * 10) / 10,
+                avgFinalLengthCm: Math.round(avgFinalLength * 10) / 10,
+                avgLeftoverCm: avgLeftover != null ? Math.round(avgLeftover * 10) / 10 : null,
+                source: "legacy" as const,
+              };
+            }
           }
         }
 

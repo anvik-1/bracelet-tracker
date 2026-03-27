@@ -39,3 +39,9 @@
 - [x] Historical learning: per-string data from past bracelets feeds into calculator adjustments
 - [x] Updated tests: 44 tests passing (SVG parsing, per-string calculation, color map extraction)
 - [x] BUG FIX: String calculator lengths were way too long. Replaced knot-consumption formula with multiplier-based approach (3.5x base, adjusted per string by knot ratio, clamped 2.5x-5.0x). Results now match standard 3-5x rule of thumb.
+- [x] Add per-string measurements JSON column to bracelets table (array of {position, color, cutLengthCm, leftoverCm})
+- [x] Update backend routers to accept/return per-string measurements
+- [x] Update Add Bracelet form with per-string measurement inputs (auto-populated from pattern string count)
+- [x] Update Edit Bracelet form with per-string measurement inputs
+- [x] Update calculator learning to use per-string historical data for more precise adjustments
+- [x] Update tests for per-string measurements (49 tests passing)

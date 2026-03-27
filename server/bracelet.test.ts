@@ -417,6 +417,92 @@ describe("thread router", () => {
   });
 });
 
+describe("per-string measurements", () => {
+  it("creates a bracelet with per-string measurements", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const result = await caller.bracelet.create({
+      name: "Measured Bracelet",
+      status: "completed",
+      patternNumber: "207002",
+      perStringMeasurements: [
+        { position: 0, colorLetter: "a", colorHex: "#FF0000", cutLengthCm: 75.5, leftoverCm: 12.3 },
+        { position: 1, colorLetter: "b", colorHex: "#00FF00", cutLengthCm: 80.0, leftoverCm: 8.5 },
+        { position: 2, colorLetter: "a", colorHex: "#FF0000", cutLengthCm: 75.5, leftoverCm: 15.0 },
+        { position: 3, colorLetter: "b", colorHex: "#00FF00", cutLengthCm: 80.0, leftoverCm: 10.2 },
+      ],
+    });
+
+    expect(result).toBeDefined();
+    expect(result?.perStringMeasurements).toHaveLength(4);
+    expect(result?.perStringMeasurements?.[0]).toMatchObject({
+      position: 0,
+      colorLetter: "a",
+      cutLengthCm: 75.5,
+      leftoverCm: 12.3,
+    });
+  });
+
+  it("creates a bracelet with partial per-string measurements (some null)", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const result = await caller.bracelet.create({
+      name: "Partial Measurements",
+      perStringMeasurements: [
+        { position: 0, cutLengthCm: 70, leftoverCm: null },
+        { position: 1, cutLengthCm: null, leftoverCm: 5 },
+      ],
+    });
+
+    expect(result).toBeDefined();
+    expect(result?.perStringMeasurements).toHaveLength(2);
+  });
+
+  it("creates a bracelet without per-string measurements", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const result = await caller.bracelet.create({
+      name: "No Per-String",
+      stringLengthCm: 80,
+      leftoverStringCm: 10,
+    });
+
+    expect(result).toBeDefined();
+    expect(result?.perStringMeasurements).toBeNull();
+  });
+
+  it("rejects per-string measurements with negative cut length", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(
+      caller.bracelet.create({
+        name: "Bad Measurement",
+        perStringMeasurements: [
+          { position: 0, cutLengthCm: -5, leftoverCm: null },
+        ],
+      })
+    ).rejects.toThrow();
+  });
+
+  it("rejects per-string measurements with negative position", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(
+      caller.bracelet.create({
+        name: "Bad Position",
+        perStringMeasurements: [
+          { position: -1, cutLengthCm: 70, leftoverCm: null },
+        ],
+      })
+    ).rejects.toThrow();
+  });
+});
+
 describe("auth.me", () => {
   it("returns user when authenticated", async () => {
     const ctx = createAuthContext();

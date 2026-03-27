@@ -67,6 +67,10 @@ export default function EditBracelet() {
   const [stringLengthCm, setStringLengthCm] = useState("");
   const [numberOfStrings, setNumberOfStrings] = useState("");
   const [leftoverStringCm, setLeftoverStringCm] = useState("");
+  const [perStringMeasurements, setPerStringMeasurements] = useState<
+    Array<{ position: number; colorLetter: string; colorHex: string; cutLengthCm: string; leftoverCm: string }>
+  >([]);
+  const [showPerString, setShowPerString] = useState(false);
   const [photoBase64, setPhotoBase64] = useState<string | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [photoFile, setPhotoFile] = useState<{ name: string; type: string } | null>(null);
@@ -81,6 +85,21 @@ export default function EditBracelet() {
   );
 
   const maxColors = patternData?.strings || null;
+
+  // Initialize per-string measurements from pattern data if none exist yet
+  useEffect(() => {
+    if (patternData?.perStringData && patternData.perStringData.length > 0 && perStringMeasurements.length === 0 && initialized) {
+      setPerStringMeasurements(
+        patternData.perStringData.map((s: any, i: number) => ({
+          position: i,
+          colorLetter: s.colorLetter || "",
+          colorHex: patternData.colorMap?.[s.colorLetter] || "",
+          cutLengthCm: "",
+          leftoverCm: "",
+        }))
+      );
+    }
+  }, [patternData, initialized]);
 
   useEffect(() => {
     if (bracelet && !initialized) {
@@ -101,6 +120,20 @@ export default function EditBracelet() {
       setStringLengthCm(bracelet.stringLengthCm?.toString() || "");
       setNumberOfStrings(bracelet.numberOfStrings?.toString() || "");
       setLeftoverStringCm((bracelet as any).leftoverStringCm?.toString() || "");
+      // Load existing per-string measurements
+      const existingPerString = (bracelet as any).perStringMeasurements;
+      if (existingPerString && Array.isArray(existingPerString) && existingPerString.length > 0) {
+        setPerStringMeasurements(
+          existingPerString.map((m: any) => ({
+            position: m.position ?? 0,
+            colorLetter: m.colorLetter || "",
+            colorHex: m.colorHex || "",
+            cutLengthCm: m.cutLengthCm?.toString() || "",
+            leftoverCm: m.leftoverCm?.toString() || "",
+          }))
+        );
+        setShowPerString(true);
+      }
       if (bracelet.photoUrl) {
         setPhotoPreview(bracelet.photoUrl);
       }
@@ -180,6 +213,17 @@ export default function EditBracelet() {
       }
     }
 
+    // Build per-string measurements
+    const perStringData = perStringMeasurements
+      .map((m) => ({
+        position: m.position,
+        colorLetter: m.colorLetter || undefined,
+        colorHex: m.colorHex || undefined,
+        cutLengthCm: m.cutLengthCm ? parseFloat(m.cutLengthCm) : null,
+        leftoverCm: m.leftoverCm ? parseFloat(m.leftoverCm) : null,
+      }))
+      .filter((m) => m.cutLengthCm !== null || m.leftoverCm !== null);
+
     updateMutation.mutate({
       id: braceletId,
       name: name.trim(),
@@ -199,6 +243,7 @@ export default function EditBracelet() {
       stringLengthCm: stringLengthCm ? parseFloat(stringLengthCm) : null,
       numberOfStrings: numberOfStrings ? parseInt(numberOfStrings) : null,
       leftoverStringCm: leftoverStringCm ? parseFloat(leftoverStringCm) : null,
+      perStringMeasurements: perStringData.length > 0 ? perStringData : null,
     });
   };
 
@@ -489,25 +534,114 @@ export default function EditBracelet() {
               </Tooltip>
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>String Cut Length (cm)</Label>
-                <Input type="number" step="0.1" min="0" value={stringLengthCm} onChange={(e) => setStringLengthCm(e.target.value)} placeholder="How long you cut each string" />
-              </div>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label>Final Bracelet Length (cm)</Label>
-                <Input type="number" step="0.1" min="0" value={finalLengthCm} onChange={(e) => setFinalLengthCm(e.target.value)} placeholder="Finished bracelet length" />
+                <Input type="number" step="0.1" min="0" value={finalLengthCm} onChange={(e) => setFinalLengthCm(e.target.value)} placeholder="Finished length" />
               </div>
               <div className="space-y-2">
                 <Label>Number of Strings</Label>
                 <Input type="number" min="0" value={numberOfStrings} onChange={(e) => setNumberOfStrings(e.target.value)} placeholder="Auto-fills from pattern" />
               </div>
               <div className="space-y-2">
-                <Label>Leftover String (cm)</Label>
-                <Input type="number" step="0.1" min="0" value={leftoverStringCm} onChange={(e) => setLeftoverStringCm(e.target.value)} placeholder="How much was left over" />
+                <Label>Uniform Cut Length (cm)</Label>
+                <Input type="number" step="0.1" min="0" value={stringLengthCm} onChange={(e) => setStringLengthCm(e.target.value)} placeholder="If all strings same length" />
               </div>
             </div>
+
+            {/* Per-String Measurements */}
+            {perStringMeasurements.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <button
+                    type="button"
+                    onClick={() => setShowPerString(!showPerString)}
+                    className="text-sm font-medium text-primary hover:underline flex items-center gap-1"
+                  >
+                    {showPerString ? "Hide" : "Show"} per-string measurements ({perStringMeasurements.length} strings)
+                  </button>
+                </div>
+
+                {showPerString && (
+                  <div className="rounded-lg border bg-muted/20 p-3 space-y-2">
+                    <p className="text-xs text-muted-foreground">
+                      Record the actual cut length and leftover for each string.
+                    </p>
+                    <div className="space-y-1.5">
+                      <div className="grid grid-cols-[auto_2fr_1fr_1fr] gap-2 text-xs font-medium text-muted-foreground px-1">
+                        <span className="w-8">#</span>
+                        <span>Color</span>
+                        <span>Cut Length (cm)</span>
+                        <span>Leftover (cm)</span>
+                      </div>
+                      {perStringMeasurements.map((m, i) => (
+                        <div key={i} className="grid grid-cols-[auto_2fr_1fr_1fr] gap-2 items-center">
+                          <span className="text-xs font-mono text-muted-foreground w-8 text-center">{i + 1}</span>
+                          <div className="flex items-center gap-1.5">
+                            {m.colorHex && (
+                              <div
+                                className="w-4 h-4 rounded-full border border-white shadow-sm shrink-0"
+                                style={{ backgroundColor: m.colorHex }}
+                              />
+                            )}
+                            <span className="text-xs text-muted-foreground truncate">
+                              {m.colorLetter ? `String ${m.colorLetter.toUpperCase()}` : `String ${i + 1}`}
+                            </span>
+                          </div>
+                          <Input
+                            type="number"
+                            step="0.1"
+                            min="0"
+                            value={m.cutLengthCm}
+                            onChange={(e) => {
+                              const updated = [...perStringMeasurements];
+                              updated[i] = { ...updated[i], cutLengthCm: e.target.value };
+                              setPerStringMeasurements(updated);
+                            }}
+                            placeholder="\u2014"
+                            className="h-8 text-sm"
+                          />
+                          <Input
+                            type="number"
+                            step="0.1"
+                            min="0"
+                            value={m.leftoverCm}
+                            onChange={(e) => {
+                              const updated = [...perStringMeasurements];
+                              updated[i] = { ...updated[i], leftoverCm: e.target.value };
+                              setPerStringMeasurements(updated);
+                            }}
+                            placeholder="\u2014"
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex gap-2 pt-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="text-xs h-7"
+                        onClick={() => {
+                          setPerStringMeasurements(perStringMeasurements.map((m) => ({ ...m, cutLengthCm: "", leftoverCm: "" })));
+                        }}
+                      >
+                        Clear all
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {perStringMeasurements.length === 0 && (
+              <div className="space-y-2">
+                <Label>Leftover String (cm)</Label>
+                <Input type="number" step="0.1" min="0" value={leftoverStringCm} onChange={(e) => setLeftoverStringCm(e.target.value)} placeholder="How much was left over (average)" />
+              </div>
+            )}
           </CardContent>
         </Card>
 

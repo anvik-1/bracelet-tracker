@@ -1,8 +1,4 @@
-Screenshot review - per-string calculator update:
-- Home page looks great with status tabs, pattern preview images, color swatches
-- Bracelet card shows "Arrowhead Diamond" with pattern #206407 and BraceletBook preview
-- Status badge "Want to Make" visible on card
-- All 44 tests passing
-- TypeScript: 0 errors
-- Server running correctly
-- Need to verify calculator page visually
+Per-string measurements update:
+- App running, 0 TS errors
+- Home page shows status tabs correctly
+- Need to update tests for per-string measurements

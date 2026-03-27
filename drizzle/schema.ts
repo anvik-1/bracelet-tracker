@@ -58,12 +58,20 @@ export const bracelets = mysqlTable("bracelets", {
   photoKey: varchar("photoKey", { length: 500 }),
   /** Final bracelet length in cm (actual measured) */
   finalLengthCm: float("finalLengthCm"),
-  /** How long each string was cut in cm (actual measured) */
+  /** How long each string was cut in cm (actual measured) - legacy uniform value */
   stringLengthCm: float("stringLengthCm"),
   /** Number of strings used */
   numberOfStrings: int("numberOfStrings"),
-  /** How much leftover string remained in cm (for calculator learning) */
+  /** How much leftover string remained in cm - legacy uniform value */
   leftoverStringCm: float("leftoverStringCm"),
+  /** Per-string measurements: array of {position, colorLetter, cutLengthCm, leftoverCm} */
+  perStringMeasurements: json("perStringMeasurements").$type<Array<{
+    position: number;
+    colorLetter?: string;
+    colorHex?: string;
+    cutLengthCm: number | null;
+    leftoverCm: number | null;
+  }>>(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
