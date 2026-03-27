@@ -94,6 +94,70 @@ vi.mock("./storage", () => ({
   })),
 }));
 
+// Mock braceletbook
+vi.mock("./braceletbook", () => ({
+  fetchPatternData: vi.fn(async (patternId: string) => {
+    if (patternId === "999999") return null;
+    return {
+      patternId,
+      patternUrl: `https://www.braceletbook.com/patterns/normal/${patternId}/`,
+      previewImageUrl: `https://media.braceletbookcdn.com/preview.png`,
+      patternImageUrl: `https://media.braceletbookcdn.com/pattern.png`,
+      previewSmallUrl: `https://media.braceletbookcdn.com/preview_small.png`,
+      strings: 8,
+      rows: 20,
+      colors: 3,
+      dimensions: "20x8",
+      colorHexValues: ["#FF0000", "#00FF00", "#0000FF"],
+      totalKnots: 80,
+      author: "testuser",
+      perStringData: [
+        { index: 0, svgId: "s00", colorLetter: "a", knotsTied: 10, knotsOn: 10, totalKnots: 20, recommendedLengthCm: 60 },
+        { index: 1, svgId: "s01", colorLetter: "b", knotsTied: 12, knotsOn: 8, totalKnots: 20, recommendedLengthCm: 65 },
+        { index: 2, svgId: "s10", colorLetter: "c", knotsTied: 8, knotsOn: 12, totalKnots: 20, recommendedLengthCm: 55 },
+        { index: 3, svgId: "s11", colorLetter: "a", knotsTied: 10, knotsOn: 10, totalKnots: 20, recommendedLengthCm: 60 },
+        { index: 4, svgId: "s20", colorLetter: "b", knotsTied: 12, knotsOn: 8, totalKnots: 20, recommendedLengthCm: 65 },
+        { index: 5, svgId: "s21", colorLetter: "c", knotsTied: 8, knotsOn: 12, totalKnots: 20, recommendedLengthCm: 55 },
+        { index: 6, svgId: "s30", colorLetter: "a", knotsTied: 10, knotsOn: 10, totalKnots: 20, recommendedLengthCm: 60 },
+        { index: 7, svgId: "s31", colorLetter: "b", knotsTied: 12, knotsOn: 8, totalKnots: 20, recommendedLengthCm: 65 },
+      ],
+      colorMap: { a: "#FF0000", b: "#00FF00", c: "#0000FF" },
+    };
+  }),
+  getPatternImageUrls: vi.fn((patternId: string) => ({
+    previewImage: `https://media.braceletbookcdn.com/preview.png`,
+    previewSmall: `https://media.braceletbookcdn.com/preview_small.png`,
+    previewSmall2x: `https://media.braceletbookcdn.com/preview_small_2x.png`,
+    patternImage: `https://media.braceletbookcdn.com/pattern.png`,
+    patternSvg: `https://www.braceletbook.com/pattern.svg`,
+    previewSvg: `https://www.braceletbook.com/preview.svg`,
+  })),
+  calculatePerStringLengths: vi.fn(),
+}));
+
+// Mock LLM
+vi.mock("./_core/llm", () => ({
+  invokeLLM: vi.fn(async () => ({
+    choices: [{
+      message: {
+        content: JSON.stringify({
+          combinations: [
+            {
+              name: "Ocean Breeze",
+              reason: "Cool blues and greens create a calming ocean feel",
+              assignments: [
+                { colorLetter: "a", threadId: 1, threadName: "Sky Blue", threadHex: "#87CEEB" },
+                { colorLetter: "b", threadId: 2, threadName: "Sea Green", threadHex: "#2E8B57" },
+                { colorLetter: "c", threadId: 3, threadName: "Deep Navy", threadHex: "#000080" },
+              ],
+            },
+          ],
+        }),
+      },
+    }],
+  })),
+}));
+
 type AuthenticatedUser = NonNullable<TrpcContext["user"]>;
 
 function createAuthContext(userId = 1): TrpcContext {
@@ -499,6 +563,47 @@ describe("per-string measurements", () => {
           { position: -1, cutLengthCm: 70, leftoverCm: null },
         ],
       })
+    ).rejects.toThrow();
+  });
+});
+
+describe("colorCombo router", () => {
+  it("suggests color combinations for a valid pattern with threads", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    // First add some threads so the library isn't empty
+    await caller.thread.create({ colorName: "Sky Blue", colorHex: "#87CEEB", quantity: 2 });
+    await caller.thread.create({ colorName: "Sea Green", colorHex: "#2E8B57", quantity: 3 });
+    await caller.thread.create({ colorName: "Deep Navy", colorHex: "#000080", quantity: 1 });
+
+    const result = await caller.colorCombo.suggest({ patternId: "207002" });
+
+    expect(result.error).toBeNull();
+    expect(result.suggestions).toHaveLength(1);
+    expect(result.suggestions[0].name).toBe("Ocean Breeze");
+    expect(result.suggestions[0].assignments).toHaveLength(3);
+    expect(result.suggestions[0].assignments[0].colorLetter).toBe("a");
+    expect(result.pattern).toBeDefined();
+    expect(result.pattern?.strings).toBe(8);
+  });
+
+  it("returns error for non-existent pattern", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    const result = await caller.colorCombo.suggest({ patternId: "999999" });
+
+    expect(result.error).toBe("Pattern not found on BraceletBook");
+    expect(result.suggestions).toHaveLength(0);
+  });
+
+  it("rejects empty pattern ID", async () => {
+    const ctx = createAuthContext();
+    const caller = appRouter.createCaller(ctx);
+
+    await expect(
+      caller.colorCombo.suggest({ patternId: "" })
     ).rejects.toThrow();
   });
 });

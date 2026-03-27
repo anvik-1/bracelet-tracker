@@ -302,6 +302,168 @@ export const appRouter = router({
       }),
   }),
 
+  colorCombo: router({
+    suggest: protectedProcedure
+      .input(
+        z.object({
+          patternId: z.string().min(1),
+        })
+      )
+      .query(async ({ ctx, input }) => {
+        console.log("[ColorCombo] Suggesting colors for pattern:", input.patternId);
+
+        // Fetch pattern data to get color map
+        const pattern = await fetchPatternData(input.patternId);
+        if (!pattern) {
+          return { error: "Pattern not found on BraceletBook", suggestions: [] };
+        }
+
+        // Get user's thread library
+        const threads = await listThreads(ctx.user.id);
+        if (!threads || threads.length === 0) {
+          return {
+            error: "Your thread library is empty. Add some threads first!",
+            suggestions: [],
+            pattern: {
+              patternId: pattern.patternId,
+              colorMap: pattern.colorMap,
+              strings: pattern.strings,
+              perStringData: pattern.perStringData.map((s) => ({
+                svgId: s.svgId,
+                colorLetter: s.colorLetter,
+              })),
+            },
+          };
+        }
+
+        // Build color info for the LLM
+        const patternColors = Object.entries(pattern.colorMap).map(([letter, hex]) => ({
+          letter,
+          hex,
+          stringCount: pattern.perStringData.filter((s) => s.colorLetter === letter).length,
+        }));
+
+        const threadList = threads.map((t: any) => ({
+          id: t.id,
+          name: t.colorName,
+          hex: t.colorHex,
+          code: t.colorCode || null,
+          brand: t.brand || null,
+          type: t.threadType || "regular",
+          secondaryColors: t.secondaryColors || [],
+          quantity: t.quantity || 0,
+        }));
+
+        // Use LLM to suggest creative color combinations
+        const { invokeLLM } = await import("./_core/llm");
+
+        const response = await invokeLLM({
+          messages: [
+            {
+              role: "system" as const,
+              content: `You are a friendship bracelet color advisor. Given a pattern's color slots and a user's thread library, suggest 3 different color combinations. Each combination should be creative and aesthetically pleasing.
+
+For each combination:
+- Assign a thread from the library to each color letter in the pattern
+- Consider color harmony, contrast, and visual appeal
+- Name the combination theme (e.g., "Ocean Breeze", "Sunset Glow")
+- Give a brief reason why the colors work together
+- Consider thread types (metallic, glitter, multicolor) for accent positions
+- Only suggest threads the user actually has (quantity > 0)
+- Each color letter needs exactly one thread assignment
+
+Respond with valid JSON matching the schema.`,
+            },
+            {
+              role: "user" as const,
+              content: `Pattern has ${pattern.strings} strings with ${patternColors.length} colors:
+${patternColors.map((c) => `  Color "${c.letter}": ${c.hex} (used by ${c.stringCount} strings)`).join("\n")}
+
+My thread library:
+${threadList.map((t) => `  ID:${t.id} - ${t.name} (${t.hex})${t.code ? ` [${t.brand} ${t.code}]` : ""}${t.type !== "regular" ? ` [${t.type}]` : ""}${t.secondaryColors.length > 0 ? ` multicolor: ${t.secondaryColors.join(",")}` : ""} qty:${t.quantity}`).join("\n")}
+
+Suggest 3 color combinations.`,
+            },
+          ],
+          response_format: {
+            type: "json_schema" as const,
+            json_schema: {
+              name: "color_suggestions",
+              strict: true,
+              schema: {
+                type: "object",
+                properties: {
+                  combinations: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        name: { type: "string", description: "Theme name for this combination" },
+                        reason: { type: "string", description: "Why these colors work together" },
+                        assignments: {
+                          type: "array",
+                          items: {
+                            type: "object",
+                            properties: {
+                              colorLetter: { type: "string", description: "Pattern color letter" },
+                              threadId: { type: "number", description: "Thread ID from library" },
+                              threadName: { type: "string", description: "Thread name" },
+                              threadHex: { type: "string", description: "Thread hex color" },
+                            },
+                            required: ["colorLetter", "threadId", "threadName", "threadHex"],
+                            additionalProperties: false,
+                          },
+                        },
+                      },
+                      required: ["name", "reason", "assignments"],
+                      additionalProperties: false,
+                    },
+                  },
+                },
+                required: ["combinations"],
+                additionalProperties: false,
+              },
+            },
+          },
+        });
+
+        let suggestions: Array<{
+          name: string;
+          reason: string;
+          assignments: Array<{
+            colorLetter: string;
+            threadId: number;
+            threadName: string;
+            threadHex: string;
+          }>;
+        }> = [];
+
+        try {
+          const content = response.choices[0]?.message?.content;
+          const text = typeof content === "string" ? content : "";
+          const parsed = JSON.parse(text);
+          suggestions = parsed.combinations || [];
+        } catch (e) {
+          console.error("[ColorCombo] Failed to parse LLM response:", e);
+        }
+
+        return {
+          error: null,
+          suggestions,
+          pattern: {
+            patternId: pattern.patternId,
+            colorMap: pattern.colorMap,
+            strings: pattern.strings,
+            perStringData: pattern.perStringData.map((s) => ({
+              svgId: s.svgId,
+              colorLetter: s.colorLetter,
+            })),
+            previewImageUrl: pattern.previewImageUrl,
+          },
+        };
+      }),
+  }),
+
   thread: router({
     create: protectedProcedure.input(threadInput).mutation(async ({ ctx, input }) => {
       console.log("[Thread] Creating thread:", input.colorName);

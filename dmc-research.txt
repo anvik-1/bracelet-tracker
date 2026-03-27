@@ -1,0 +1,39 @@
+DMC Light Effects (E-series) - from stonemountainfabric.com listing:
+E130 - Winter Sparkle (metallic)
+E135 - Golden Brown / Golden Dawn (metallic)
+E155 - Amethyst (metallic)
+E168 - Silver / Town Mouse Grey (metallic)
+E211 - Lilac (metallic)
+E301 - Copper / Squirrel (metallic)
+E310 - Ebony (metallic)
+E316 - Pink Amethyst (metallic)
+E317 - Pewter (metallic)
+E321 - Ruby Red (metallic)
+E334 - Blue Sapphire (metallic)
+E415 - Pewter / Tin (metallic)
+E436 - Tan (metallic)
+E677 - Cream (metallic)
+E699 - Green Emerald (metallic)
+E703 - Chartreuse (metallic)
+E718 - Pink Garnet (metallic)
+E746 - Cream (metallic)
+E747 - Baby Blue (metallic)
+E815 - Cherry Red (metallic)
+E825 - Blue Sapphire (metallic)
+E898 - Coffee Brown (metallic)
+E940 - Neon Green (glow)
+E966 - Neon Yellow (glow)
+E3685 - Mauve (metallic)
+E3747 - Blue (metallic)
+E3837 - Purple (metallic)
+E3843 - Turquoise (metallic)
+E3849 - Teal (metallic)
+E3852 - Gold (metallic)
+E5200 - White (metallic)
+
+DMC Color Variations (4000-series) - from thread-bare.com:
+Full list captured from page with corresponding solid colors.
+These are variegated/multicolor threads.
+
+Key insight: For the E-series, we need approximate hex colors since they're metallic.
+For 4000-series, we can use the first solid color's hex as the primary color.

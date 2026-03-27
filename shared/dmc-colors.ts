@@ -1,10 +1,14 @@
 // DMC Embroidery Floss Color Database
-// Source: https://github.com/seanockert/rgb-to-dmc
-// Total colors: 454
+// Source: https://github.com/seanockert/rgb-to-dmc + manual additions
+// Total colors: 454 standard + E-series metallic + 4000-series Color Variations
+
+export type DmcThreadType = 'regular' | 'metallic' | 'multicolor' | 'glow';
 
 export interface DmcColor {
   name: string;
   hex: string;
+  threadType?: DmcThreadType;
+  secondaryHexColors?: string[];
 }
 
 export const DMC_COLORS: Record<string, DmcColor> = {
@@ -461,7 +465,120 @@ export const DMC_COLORS: Record<string, DmcColor> = {
   "317": { name: "Pewter Gray", hex: "#6C6C6C" },
   "413": { name: "Pewter Gray Dark", hex: "#565656" },
   "3799": { name: "Pewter Gray Vy Dk", hex: "#424242" },
-  "310": { name: "Black", hex: "#0" }
+  "310": { name: "Black", hex: "#0" },
+
+  // === DMC Light Effects (E-series) - Metallic threads ===
+  "E130": { name: "Winter Sparkle", hex: "#C0C0C0", threadType: "metallic" },
+  "E135": { name: "Golden Dawn", hex: "#C5A253", threadType: "metallic" },
+  "E155": { name: "Amethyst", hex: "#9B59B6", threadType: "metallic" },
+  "E168": { name: "Silver", hex: "#C0C0C0", threadType: "metallic" },
+  "E211": { name: "Lilac", hex: "#C8A2C8", threadType: "metallic" },
+  "E301": { name: "Copper", hex: "#B87333", threadType: "metallic" },
+  "E310": { name: "Ebony", hex: "#1C1C1C", threadType: "metallic" },
+  "E316": { name: "Pink Amethyst", hex: "#D4608A", threadType: "metallic" },
+  "E317": { name: "Pewter", hex: "#8E8E8E", threadType: "metallic" },
+  "E321": { name: "Ruby Red", hex: "#CC0033", threadType: "metallic" },
+  "E334": { name: "Blue Sapphire", hex: "#2E5090", threadType: "metallic" },
+  "E415": { name: "Tin", hex: "#A8A8A8", threadType: "metallic" },
+  "E436": { name: "Tan", hex: "#C4A35A", threadType: "metallic" },
+  "E677": { name: "Cream", hex: "#F5E6C8", threadType: "metallic" },
+  "E699": { name: "Green Emerald", hex: "#00A86B", threadType: "metallic" },
+  "E703": { name: "Chartreuse", hex: "#7FFF00", threadType: "metallic" },
+  "E718": { name: "Pink Garnet", hex: "#C71585", threadType: "metallic" },
+  "E746": { name: "Off White", hex: "#FAF0E6", threadType: "metallic" },
+  "E747": { name: "Baby Blue", hex: "#89CFF0", threadType: "metallic" },
+  "E815": { name: "Cherry Red", hex: "#DE3163", threadType: "metallic" },
+  "E825": { name: "Blue Sapphire Dark", hex: "#1E3A5F", threadType: "metallic" },
+  "E898": { name: "Coffee Brown", hex: "#6F4E37", threadType: "metallic" },
+  "E940": { name: "Neon Green", hex: "#39FF14", threadType: "glow" },
+  "E966": { name: "Neon Yellow", hex: "#CCFF00", threadType: "glow" },
+  "E3685": { name: "Mauve", hex: "#C08081", threadType: "metallic" },
+  "E3747": { name: "Blue Violet", hex: "#7B68EE", threadType: "metallic" },
+  "E3837": { name: "Purple", hex: "#800080", threadType: "metallic" },
+  "E3843": { name: "Turquoise", hex: "#00CED1", threadType: "metallic" },
+  "E3849": { name: "Teal", hex: "#008080", threadType: "metallic" },
+  "E3852": { name: "Gold", hex: "#FFD700", threadType: "metallic" },
+  "E5200": { name: "White", hex: "#FFFFFF", threadType: "metallic" },
+
+  // === DMC Color Variations (4000-series) - Multicolor/Variegated threads ===
+  "48": { name: "Variegated Cranberry", hex: "#CD2F63", threadType: "multicolor", secondaryHexColors: ["#E24874", "#FFC0CD"] },
+  "51": { name: "Variegated Burnt Orange", hex: "#FF7F00", threadType: "multicolor", secondaryHexColors: ["#F5A623", "#D4A76A"] },
+  "52": { name: "Variegated Violet", hex: "#E6CCD9", threadType: "multicolor", secondaryHexColors: ["#835B8B", "#5C184E", "#6C3A6E"] },
+  "53": { name: "Variegated Steel Gray", hex: "#8E8E8E", threadType: "multicolor", secondaryHexColors: ["#565656", "#424242"] },
+  "57": { name: "Variegated Red", hex: "#E31D42", threadType: "multicolor", secondaryHexColors: ["#E74967", "#FFADBC"] },
+  "69": { name: "Variegated Terra Cotta", hex: "#F5C5B5", threadType: "multicolor", secondaryHexColors: ["#A0522D", "#C17E5E"] },
+  "90": { name: "Variegated Yellow", hex: "#FF9900", threadType: "multicolor", secondaryHexColors: ["#FFD700", "#FFCC00"] },
+  "92": { name: "Variegated Green", hex: "#6B8E23", threadType: "multicolor", secondaryHexColors: ["#D4E88B", "#2E8B57"] },
+  "94": { name: "Variegated Khaki", hex: "#8B7D3C", threadType: "multicolor", secondaryHexColors: ["#A8A060", "#C0B88C"] },
+  "99": { name: "Variegated Mauve", hex: "#C96B70", threadType: "multicolor", secondaryHexColors: ["#FFDFD9", "#881531"] },
+  "103": { name: "Variegated Blue Dark", hex: "#2C597C", threadType: "multicolor", secondaryHexColors: ["#35668B", "#466A8E"] },
+  "105": { name: "Variegated Brown", hex: "#8B6914", threadType: "multicolor", secondaryHexColors: ["#B08D57", "#F0E6C8"] },
+  "106": { name: "Variegated Coral", hex: "#FF4500", threadType: "multicolor", secondaryHexColors: ["#FFC0A0", "#F5896E"] },
+  "107": { name: "Variegated Carnation", hex: "#C72B3B", threadType: "multicolor", secondaryHexColors: ["#B33B4B", "#E24874", "#FFA4BE"] },
+  "111": { name: "Variegated Mustard", hex: "#C68E17", threadType: "multicolor", secondaryHexColors: ["#D4A76A", "#E8C874"] },
+  "115": { name: "Variegated Garnet", hex: "#C72B3B", threadType: "multicolor", secondaryHexColors: ["#970B23", "#822637"] },
+  "121": { name: "Variegated Delft Blue", hex: "#7B8EAB", threadType: "multicolor", secondaryHexColors: ["#13477D", "#466A8E"] },
+  "125": { name: "Variegated Seafoam", hex: "#2E8B57", threadType: "multicolor", secondaryHexColors: ["#3CB371", "#98FB98", "#B5FFD4"] },
+  "4000": { name: "Espresso", hex: "#4A3728", threadType: "multicolor", secondaryHexColors: ["#3B2E1E", "#2B1B0E", "#424242"] },
+  "4010": { name: "Winter Sky", hex: "#DBECF5", threadType: "multicolor", secondaryHexColors: ["#E0DFDA", "#A8A8A8", "#C7CAD7"] },
+  "4015": { name: "Stormy Skies", hex: "#8E8E8E", threadType: "multicolor", secondaryHexColors: ["#A8A8A8", "#E0DFDA", "#C8C8C0"] },
+  "4017": { name: "Polar Ice", hex: "#A09C8A", threadType: "multicolor", secondaryHexColors: ["#F5F0E8", "#BDDDED", "#D9EBF1"] },
+  "4020": { name: "Tropical Waters", hex: "#B0C0DA", threadType: "multicolor", secondaryHexColors: ["#99CFD9", "#E5FCFD", "#ACD8E2"] },
+  "4022": { name: "Mediterranean Sea", hex: "#14AAD0", threadType: "multicolor", secondaryHexColors: ["#12AEBA", "#30C2EC", "#06E3E6"] },
+  "4025": { name: "Caribbean Bay", hex: "#3F7C85", threadType: "multicolor", secondaryHexColors: ["#488E9A", "#5BA3B3"] },
+  "4030": { name: "Monet's Garden", hex: "#6A859E", threadType: "multicolor", secondaryHexColors: ["#5BA3B3", "#488E9A", "#6FAE9F"] },
+  "4040": { name: "Water Lilies", hex: "#E5FCFD", threadType: "multicolor", secondaryHexColors: ["#3EB6A1", "#A9E2D8", "#B5FFD4"] },
+  "4042": { name: "Very Merry", hex: "#C72B3B", threadType: "multicolor", secondaryHexColors: ["#FFFFFF", "#006B3C", "#98FB98"] },
+  "4045": { name: "Evergreen Forest", hex: "#2E5A1E", threadType: "multicolor", secondaryHexColors: ["#4A7A3B", "#5F8A4E"] },
+  "4047": { name: "Emerald Isle", hex: "#2E8B57", threadType: "multicolor", secondaryHexColors: ["#3CB371", "#006400", "#004D00"] },
+  "4050": { name: "Roaming Pastures", hex: "#6FAE9F", threadType: "multicolor", secondaryHexColors: ["#3CB371", "#7FFF00", "#6B8E23"] },
+  "4060": { name: "Weeping Willow", hex: "#A9E2D8", threadType: "multicolor", secondaryHexColors: ["#98FB98", "#D4E88B", "#ADFF2F"] },
+  "4065": { name: "Morning Meadow", hex: "#98AEAE", threadType: "multicolor", secondaryHexColors: ["#8B8B6E", "#A09C8A", "#B5A68E"] },
+  "4066": { name: "Amazon Moss", hex: "#4A6B3A", threadType: "multicolor", secondaryHexColors: ["#3A3A2A", "#6B8E23", "#ADFF2F"] },
+  "4068": { name: "Aged Bronze", hex: "#2B1B0E", threadType: "multicolor", secondaryHexColors: ["#6F4E37", "#8B7D3C", "#C0B88C"] },
+  "4069": { name: "Margarita", hex: "#7FFF00", threadType: "multicolor", secondaryHexColors: ["#ADFF2F", "#FFCC00", "#FFE680"] },
+  "4070": { name: "Autumn Leaves", hex: "#FFD700", threadType: "multicolor", secondaryHexColors: ["#ADFF2F", "#C8E800", "#A09C8A"] },
+  "4072": { name: "Toasted Almond", hex: "#C4A35A", threadType: "multicolor", secondaryHexColors: ["#D4C8A0", "#B08D57", "#F5E6C8"] },
+  "4073": { name: "Golden Oasis", hex: "#FFD700", threadType: "multicolor", secondaryHexColors: ["#FFE44D", "#DAA520", "#F0E6C8"] },
+  "4075": { name: "Wheat Field", hex: "#DAA520", threadType: "multicolor", secondaryHexColors: ["#FFD700", "#F0E6C8", "#C4A35A"] },
+  "4077": { name: "Sunny Day", hex: "#FFD700", threadType: "multicolor", secondaryHexColors: ["#FFE680", "#FFF8DC"] },
+  "4080": { name: "Daffodil Fields", hex: "#FFF8DC", threadType: "multicolor", secondaryHexColors: ["#FFE44D", "#FFFACD", "#ADFF2F"] },
+  "4090": { name: "Golden Sands", hex: "#F5C5B5", threadType: "multicolor", secondaryHexColors: ["#F5A623", "#FFFACD", "#FFF8DC"] },
+  "4095": { name: "Blushing Bride", hex: "#FFF8DC", threadType: "multicolor", secondaryHexColors: ["#D4A76A", "#FFE2E2", "#FFC0CB"] },
+  "4100": { name: "Sunrise", hex: "#F5A623", threadType: "multicolor", secondaryHexColors: ["#FF8C69", "#F5C5B5", "#FFE44D"] },
+  "4110": { name: "Sunrise Sunset", hex: "#FFCBD5", threadType: "multicolor", secondaryHexColors: ["#F5896E", "#FF8C69", "#FFC0A0"] },
+  "4120": { name: "Tropical Sunset", hex: "#FF8C00", threadType: "multicolor", secondaryHexColors: ["#E96A67", "#FD9C97", "#F5C5B5"] },
+  "4122": { name: "Fall Harvest", hex: "#8B4513", threadType: "multicolor", secondaryHexColors: ["#FF9900", "#FFD700", "#E31D42"] },
+  "4124": { name: "Bonfire", hex: "#CC5500", threadType: "multicolor", secondaryHexColors: ["#E07020", "#FF8C00"] },
+  "4126": { name: "Desert Canyon", hex: "#B08D57", threadType: "multicolor", secondaryHexColors: ["#A0522D", "#C68E17", "#DAA520"] },
+  "4128": { name: "Gold Coast", hex: "#FFD700", threadType: "multicolor", secondaryHexColors: ["#C68E17", "#D4A76A"] },
+  "4129": { name: "South Seas", hex: "#C4A35A", threadType: "multicolor", secondaryHexColors: ["#D4A76A", "#E8C874", "#8B6914"] },
+  "4130": { name: "Chilean Sunset", hex: "#A14B51", threadType: "multicolor", secondaryHexColors: ["#A0522D", "#C17E5E", "#B5651D"] },
+  "4135": { name: "Desert Sand", hex: "#8B4513", threadType: "multicolor", secondaryHexColors: ["#6F4E37", "#A0522D", "#4A3728"] },
+  "4140": { name: "Driftwood", hex: "#C4A882", threadType: "multicolor", secondaryHexColors: ["#A0522D", "#C8B8A0", "#D8D0C0"] },
+  "4145": { name: "Sand Dune", hex: "#B5A68E", threadType: "multicolor", secondaryHexColors: ["#A09C8A", "#8B8B6E"] },
+  "4150": { name: "Desert Oasis", hex: "#C8B8A0", threadType: "multicolor", secondaryHexColors: ["#F5F0E8", "#F0E6C8", "#C0B0A0"] },
+  "4160": { name: "Glistening Pearl", hex: "#FFDFD9", threadType: "multicolor", secondaryHexColors: ["#FFF5EE", "#FFFACD", "#FFF8F0"] },
+  "4170": { name: "Whispering Wind", hex: "#FFC0A0", threadType: "multicolor", secondaryHexColors: ["#FFC0CD", "#FFC0CB", "#FFDFD9"] },
+  "4180": { name: "Rose Petals", hex: "#FFA4BE", threadType: "multicolor", secondaryHexColors: ["#FFB0BE", "#FFC0CD"] },
+  "4190": { name: "Ocean Coral", hex: "#FF6347", threadType: "multicolor", secondaryHexColors: ["#FF9191", "#FFADBC", "#FDB5B5"] },
+  "4200": { name: "Wildfire", hex: "#C72B3B", threadType: "multicolor", secondaryHexColors: ["#E31D42", "#FF5773", "#FF4500"] },
+  "4205": { name: "Caliente", hex: "#E74967", threadType: "multicolor", secondaryHexColors: ["#C72B3B", "#BB051F", "#7B001B"] },
+  "4210": { name: "Radiant Ruby", hex: "#9B1359", threadType: "multicolor", secondaryHexColors: ["#7B001B", "#913546", "#A7132B"] },
+  "4211": { name: "Plum Berry", hex: "#B33B4B", threadType: "multicolor", secondaryHexColors: ["#9C2462", "#633666", "#C39FC3"] },
+  "4212": { name: "Mixed Berries", hex: "#5C184E", threadType: "multicolor", secondaryHexColors: ["#464563", "#970B23", "#7B001B"] },
+  "4214": { name: "Cotton Candy", hex: "#F0CED4", threadType: "multicolor", secondaryHexColors: ["#5A8FB8", "#FFDFD9", "#DBECF5"] },
+  "4215": { name: "Northern Lights", hex: "#5A8FB8", threadType: "multicolor", secondaryHexColors: ["#A3AED1", "#9891B6", "#A37BA7"] },
+  "4220": { name: "Lavender Fields", hex: "#9891B6", threadType: "multicolor", secondaryHexColors: ["#A3AED1", "#B7BFDD", "#BBC3D9"] },
+  "4230": { name: "Crystal Water", hex: "#5A8FB8", threadType: "multicolor", secondaryHexColors: ["#94A8C6", "#B0C0DA"] },
+  "4235": { name: "Ash", hex: "#7880A4", threadType: "multicolor", secondaryHexColors: ["#999FB7", "#C7CAD7"] },
+  "4237": { name: "Lagoon", hex: "#466A8E", threadType: "multicolor", secondaryHexColors: ["#E5FCFD", "#2C597C", "#3D95A5"] },
+  "4240": { name: "Mid Summer Night", hex: "#253B73", threadType: "multicolor", secondaryHexColors: ["#1C5066", "#35668B", "#4C526E"] },
+  "4245": { name: "Mystical Midnight", hex: "#5C184E", threadType: "multicolor", secondaryHexColors: ["#464563", "#13477D", "#1B2853"] },
+  "4250": { name: "Berry Parfait", hex: "#835B8B", threadType: "multicolor", secondaryHexColors: ["#E3CBE3", "#13477D", "#ADA7C7"] },
+  "4255": { name: "Orchid", hex: "#FFFFFF", threadType: "multicolor", secondaryHexColors: ["#DBB3CB", "#6C3A6E", "#5C184E"] },
+  "4260": { name: "Enchanted", hex: "#F4AED5", threadType: "multicolor", secondaryHexColors: ["#EA9CC4", "#835B8B", "#BA91AA"] },
+  "4265": { name: "Purple Pansy", hex: "#835B8B", threadType: "multicolor", secondaryHexColors: ["#E3CBE3", "#5C184E", "#FFCC00"] }
 };
 
 export function lookupDmc(code: string): DmcColor | null {
@@ -469,9 +586,16 @@ export function lookupDmc(code: string): DmcColor | null {
   const exact = DMC_COLORS[code];
   if (exact) return exact;
   
-  // Try uppercase
+  // Try uppercase (handles e168 -> E168)
   const upper = DMC_COLORS[code.toUpperCase()];
   if (upper) return upper;
+  
+  // Try with E prefix uppercase
+  if (code.toLowerCase().startsWith('e')) {
+    const eCode = 'E' + code.slice(1);
+    const eMatch = DMC_COLORS[eCode];
+    if (eMatch) return eMatch;
+  }
   
   // Try with leading zeros stripped
   const stripped = code.replace(/^0+/, '');

@@ -31,7 +31,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { lookupDmc, searchDmc } from "@shared/dmc-colors";
+import { lookupDmc, searchDmc, type DmcColor } from "@shared/dmc-colors";
 
 const THREAD_TYPES = [
   { value: "regular", label: "Regular", icon: "" },
@@ -67,7 +67,7 @@ export default function ThreadLibrary() {
 
   // DMC lookup state
   const [dmcSearch, setDmcSearch] = useState("");
-  const [dmcSuggestions, setDmcSuggestions] = useState<Array<{ code: string; name: string; hex: string }>>([]);
+  const [dmcSuggestions, setDmcSuggestions] = useState<Array<{ code: string; name: string; hex: string; threadType?: string; secondaryHexColors?: string[] }>>([]);
   const [showDmcSuggestions, setShowDmcSuggestions] = useState(false);
 
   const { data: threads, isLoading } = trpc.thread.list.useQuery(
@@ -177,7 +177,7 @@ export default function ThreadLibrary() {
     // Try exact match first
     const exact = lookupDmc(query.trim());
     if (exact) {
-      setDmcSuggestions([{ code: query.trim(), name: exact.name, hex: exact.hex }]);
+      setDmcSuggestions([{ code: query.trim(), ...exact }]);
       setShowDmcSuggestions(true);
       return;
     }
@@ -188,14 +188,34 @@ export default function ThreadLibrary() {
     setShowDmcSuggestions(results.length > 0);
   }, []);
 
-  const applyDmcColor = (code: string, name: string, hex: string) => {
-    setColorName(name);
-    setColorHex(hex);
+  const applyDmcColor = (result: { code: string; name: string; hex: string; threadType?: string; secondaryHexColors?: string[] }) => {
+    setColorName(result.name);
+    setColorHex(result.hex);
     setBrand("DMC");
-    setColorCode(code);
-    setDmcSearch(code);
+    setColorCode(result.code);
+    setDmcSearch(result.code);
     setShowDmcSuggestions(false);
-    toast.success(`DMC ${code} - ${name} applied!`);
+
+    // Auto-set thread type from DMC data
+    if (result.threadType) {
+      const typeMap: Record<string, string> = {
+        metallic: "metallic",
+        multicolor: "multicolor",
+        glow: "glow_in_dark",
+      };
+      setThreadType(typeMap[result.threadType] || "regular");
+    } else {
+      setThreadType("regular");
+    }
+
+    // Auto-set secondary colors for multicolor threads
+    if (result.secondaryHexColors && result.secondaryHexColors.length > 0) {
+      setSecondaryColors(result.secondaryHexColors);
+    } else {
+      setSecondaryColors([]);
+    }
+
+    toast.success(`DMC ${result.code} - ${result.name} applied!`);
   };
 
   // Group threads by type then brand
@@ -374,7 +394,7 @@ export default function ThreadLibrary() {
                         key={s.code}
                         type="button"
                         className="flex items-center gap-3 w-full px-3 py-2 hover:bg-accent text-left transition-colors"
-                        onClick={() => applyDmcColor(s.code, s.name, s.hex)}
+                        onClick={() => applyDmcColor(s)}
                       >
                         <div
                           className="w-6 h-6 rounded-full border shadow-sm shrink-0"

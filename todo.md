@@ -53,3 +53,11 @@
 - [x] Update Add/Edit Bracelet forms to respect units toggle
 - [x] Update Bracelet Detail page to respect units toggle
 - [x] All 49 tests passing
+- [x] Expand DMC lookup: add E-series metallic threads (31 threads including E130-E5200)
+- [x] Expand DMC lookup: add 4000-series multicolor/variegated threads (70+ threads, 4010-4260)
+- [x] Mark E-series as metallic thread type and 4000-series as multicolor with secondary colors in auto-fill
+- [x] Color combo suggester: LLM-powered analysis of pattern colors + user's thread library
+- [x] Color combo suggester: shows which thread should be assigned to which string position (color letter)
+- [x] Color combo suggester: visual preview with color swatches and pattern reference image
+- [x] Color combo suggester: "Apply" button to one-click set the suggested colors
+- [x] All 52 tests passing (added colorCombo router tests with mocked LLM)

@@ -12,8 +12,8 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Plus, X, Upload, Loader2, ExternalLink, Sparkles, Info } from "lucide-react";
-import { useState, useRef, useEffect, useMemo } from "react";
+import { ArrowLeft, Plus, X, Upload, Loader2, ExternalLink, Sparkles, Info, Wand2, Check } from "lucide-react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import {
@@ -74,6 +74,20 @@ export default function AddBracelet() {
 
   // Fetch pattern data when pattern number changes
   const cleanPatternId = patternNumber.replace(/\D/g, "");
+
+  // Color combo suggestions
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const { data: colorSuggestions, isFetching: suggestionsIsFetching } = trpc.colorCombo.suggest.useQuery(
+    { patternId: cleanPatternId },
+    { enabled: showSuggestions && cleanPatternId.length >= 3 && !!threads && threads.length > 0 }
+  );
+
+  const applySuggestion = useCallback((assignments: Array<{ threadHex: string }>) => {
+    const hexes = assignments.map(a => a.threadHex);
+    setColors(hexes);
+    setShowSuggestions(false);
+    toast.success("Color combo applied!");
+  }, []);
   const { data: patternData, isFetching: patternLoading } = trpc.pattern.lookup.useQuery(
     { patternId: cleanPatternId },
     { enabled: cleanPatternId.length >= 3 }
@@ -382,8 +396,98 @@ export default function AddBracelet() {
                 ? `This pattern uses ${maxColors} strings.`
                 : "Add a pattern number to limit color selection to the pattern's string count."}
             </CardDescription>
+            {cleanPatternId.length >= 3 && threads && threads.length > 0 && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="mt-2 gap-1.5"
+                onClick={() => setShowSuggestions(!showSuggestions)}
+                disabled={suggestionsIsFetching}
+              >
+                {suggestionsIsFetching ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Wand2 className="h-3.5 w-3.5" />
+                )}
+                {showSuggestions ? "Hide Suggestions" : "Suggest Color Combos"}
+              </Button>
+            )}
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* AI Color Suggestions */}
+            {showSuggestions && (
+              <div className="space-y-3">
+                {suggestionsIsFetching ? (
+                  <div className="flex items-center justify-center py-8 border border-dashed rounded-lg">
+                    <div className="text-center space-y-2">
+                      <Loader2 className="h-6 w-6 animate-spin mx-auto text-primary" />
+                      <p className="text-sm text-muted-foreground">Analyzing pattern colors and your thread library...</p>
+                    </div>
+                  </div>
+                ) : colorSuggestions?.error ? (
+                  <div className="text-center py-4 border border-dashed rounded-lg">
+                    <p className="text-sm text-muted-foreground">{colorSuggestions.error}</p>
+                  </div>
+                ) : colorSuggestions?.suggestions && colorSuggestions.suggestions.length > 0 ? (
+                  <div className="space-y-3">
+                    <p className="text-xs text-muted-foreground font-medium">Suggested combinations based on your thread library:</p>
+                    {colorSuggestions.suggestions.map((combo: any, ci: number) => (
+                      <div key={ci} className="rounded-lg border bg-card p-3 space-y-2 hover:border-primary/40 transition-colors">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm font-medium">{combo.name}</p>
+                            <p className="text-xs text-muted-foreground">{combo.reason}</p>
+                          </div>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="gap-1 shrink-0"
+                            onClick={() => applySuggestion(combo.assignments)}
+                          >
+                            <Check className="h-3 w-3" /> Apply
+                          </Button>
+                        </div>
+                        {/* Visual preview: show color swatches in string order */}
+                        <div className="flex items-center gap-1">
+                          {combo.assignments.map((a: any, ai: number) => (
+                            <Tooltip key={ai}>
+                              <TooltipTrigger asChild>
+                                <div className="flex flex-col items-center gap-0.5">
+                                  <div
+                                    className="w-7 h-7 rounded-full border-2 border-white shadow-sm"
+                                    style={{ backgroundColor: a.threadHex }}
+                                  />
+                                  <span className="text-[10px] text-muted-foreground font-mono">{a.colorLetter.toUpperCase()}</span>
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="font-medium">{a.threadName}</p>
+                                <p className="text-xs opacity-70">String {a.colorLetter.toUpperCase()} → {a.threadHex}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          ))}
+                        </div>
+                        {/* Pattern preview with suggested colors */}
+                        {colorSuggestions.pattern?.previewImageUrl && (
+                          <div className="flex items-center gap-2">
+                            <img
+                              src={colorSuggestions.pattern.previewImageUrl}
+                              alt="Pattern preview"
+                              className="h-8 w-auto object-contain opacity-60"
+                              onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                            />
+                            <span className="text-[10px] text-muted-foreground">Original pattern colors for reference</span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+              </div>
+            )}
+
             {/* Selected colors */}
             {colors.length > 0 && (
               <div className="flex flex-wrap gap-2">
