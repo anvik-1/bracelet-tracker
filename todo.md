@@ -33,3 +33,8 @@
 - [x] Add thread type/variant to thread library: regular, glitter, multicolor, metallic, glow-in-dark
 - [x] Multicolor threads: support multiple colors per thread entry (secondary colors)
 - [x] Updated unit tests for status, thread types, and leftover string (36 tests passing)
+- [x] String calculator: calculate per-string lengths (each string has different knot counts)
+- [x] BraceletBook scraper: extract per-string knot data from SVG (knots tied by each string, knots tied on each string)
+- [x] String calculator: display per-string results table with individual recommended lengths, color swatches, and knot breakdown
+- [x] Historical learning: per-string data from past bracelets feeds into calculator adjustments
+- [x] Updated tests: 44 tests passing (SVG parsing, per-string calculation, color map extraction)

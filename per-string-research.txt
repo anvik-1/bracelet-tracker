@@ -1,0 +1,40 @@
+Per-String Knot Analysis from BraceletBook SVG
+================================================
+
+SVG Structure:
+- String paths: <path id="sXY" d="M ..."> where X=color pair, Y=0 or 1
+- Knot groups: <g class="k"> with ellipse (position) and use elements (direction)
+- Each knot has 2 half-hitches: use elements reference #kf (forward) or #kb (backward)
+- kf = forward: LEFT string is working string (ties the knot)
+- kb = backward: RIGHT string is working string (ties the knot)
+
+Algorithm to extract per-string knot data:
+1. Parse all string paths (id="sXY") to get each string's position at each row (y-coordinate)
+2. Parse all knot groups to get knot positions (cx, cy) and directions (kf/kb for each half-hitch)
+3. For each knot, find which 2 strings are at that position by matching (cx, cy) to string paths
+4. For each half-hitch (kf or kb), determine which string is left vs right at that knot
+5. kf → left string ties, right string is passive; kb → right string ties, left string is passive
+6. Count per-string: knots_tied (working) and knots_on (passive)
+
+Pattern 207002 results (8 strings, 16 rows, 56 knots = 112 half-hitches):
+  s00: 4 tied, 24 on (total 28)
+  s01: 14 tied, 14 on (total 28)
+  s10: 20 tied, 8 on (total 28)
+  s11: 24 tied, 4 on (total 28)
+  s20: 20 tied, 8 on (total 28)
+  s21: 20 tied, 8 on (total 28)
+  s30: 10 tied, 18 on (total 28)
+  s31: 0 tied, 28 on (total 28)
+
+Key insight: Each string participates in the same total number of knots (28 = 16 rows * ~2 knots/row)
+but the ratio of tied vs passive varies dramatically.
+
+String length formula:
+- Base: desiredLength * multiplier (3.5x-4x for normal patterns)
+- Per half-hitch tied: +0.3cm extra thread (wrapping around passive string)
+- Per half-hitch on: +0cm (string just passes through)
+- Tying allowance: +15cm for start/end knots
+- Scale by pattern repeat: multiply knot counts by (desiredRepeats / patternRepeats)
+
+The SVG only shows ONE repeat of the pattern. For a full bracelet, the pattern repeats multiple times.
+desiredRepeats = desiredLength / (patternHeight * scaleFactor)

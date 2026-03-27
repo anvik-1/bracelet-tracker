@@ -8,7 +8,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Scissors, Calculator, ExternalLink, Loader2, AlertCircle, History, TrendingUp } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Scissors, Calculator, ExternalLink, Loader2, AlertCircle, TrendingUp } from "lucide-react";
 import { useState } from "react";
 import { trpc } from "@/lib/trpc";
 
@@ -51,7 +52,7 @@ export default function StringCalculator() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="max-w-3xl mx-auto space-y-6">
       <div>
         <h1
           className="text-2xl md:text-3xl font-bold tracking-tight"
@@ -60,7 +61,7 @@ export default function StringCalculator() {
           String Length Calculator
         </h1>
         <p className="text-muted-foreground mt-1">
-          Enter a BraceletBook pattern ID and your desired bracelet length. We'll fetch the pattern details and calculate how long to cut each string.
+          Enter a BraceletBook pattern ID and your desired bracelet length. We'll analyze the pattern's knot structure and calculate how long to cut <strong>each individual string</strong>.
         </p>
       </div>
 
@@ -71,7 +72,7 @@ export default function StringCalculator() {
             Calculator
           </CardTitle>
           <CardDescription>
-            Paste a BraceletBook pattern number and your desired final bracelet length.
+            Each string ties a different number of knots, so each needs a different length.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-5">
@@ -146,7 +147,7 @@ export default function StringCalculator() {
           <CardContent className="pt-6">
             <div className="text-center space-y-3">
               <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
-              <p className="text-sm text-muted-foreground">Fetching pattern data from BraceletBook...</p>
+              <p className="text-sm text-muted-foreground">Analyzing pattern knot structure from BraceletBook...</p>
             </div>
           </CardContent>
         </Card>
@@ -166,7 +167,7 @@ export default function StringCalculator() {
         </Card>
       )}
 
-      {/* Result */}
+      {/* Results */}
       {pattern && calculation && (
         <>
           {/* Pattern Info */}
@@ -220,40 +221,89 @@ export default function StringCalculator() {
             </CardContent>
           </Card>
 
-          {/* Calculation Result */}
+          {/* Per-String Cut Lengths Table */}
           <Card className="border-primary/30 bg-primary/5">
-            <CardContent className="pt-6">
-              <div className="text-center space-y-3">
-                <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto">
-                  <Scissors className="h-7 w-7 text-primary" />
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Recommended String Length</p>
-                  <p className="text-4xl font-bold text-primary mt-1">
-                    {displayLength(calculation.recommendedLengthCm)}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">per string</p>
-                </div>
-                <div className="pt-3 border-t border-primary/10">
-                  <div className="grid grid-cols-3 gap-4 text-center">
-                    <div>
-                      <p className="text-xs text-muted-foreground">Min Length</p>
-                      <p className="font-medium text-sm">{displayLength(calculation.minLengthCm)}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">Knots/String</p>
-                      <p className="font-medium text-sm">~{calculation.knotsPerString}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs text-muted-foreground">Max Length</p>
-                      <p className="font-medium text-sm">{displayLength(calculation.maxLengthCm)}</p>
-                    </div>
-                  </div>
-                </div>
-                <p className="text-xs text-muted-foreground pt-2 max-w-md mx-auto">
-                  {calculation.explanation}
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Scissors className="h-4 w-4 text-primary" />
+                Cut Lengths Per String
+              </CardTitle>
+              <CardDescription>
+                Each string ties a different number of knots, so each needs a different length. Strings that tie more knots use more thread.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {/* Summary */}
+              <div className="mb-4 p-3 rounded-lg bg-primary/10 text-center">
+                <p className="text-xs text-muted-foreground">Average Cut Length</p>
+                <p className="text-3xl font-bold text-primary">
+                  {displayLength(calculation.averageLengthCm)}
                 </p>
               </div>
+
+              {/* Per-string table */}
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b">
+                      <th className="text-left py-2 px-2 font-medium text-muted-foreground">String #</th>
+                      <th className="text-center py-2 px-2 font-medium text-muted-foreground">Color</th>
+                      <th className="text-center py-2 px-2 font-medium text-muted-foreground">Knots Tied</th>
+                      <th className="text-center py-2 px-2 font-medium text-muted-foreground">Knots On</th>
+                      <th className="text-right py-2 px-2 font-medium text-muted-foreground">Cut Length</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {calculation.perString.map((s: any) => {
+                      const colorHex = pattern.colorMap?.[s.colorLetter] || "#999";
+                      const isMax = s.recommendedLengthCm === Math.max(...calculation.perString.map((x: any) => x.recommendedLengthCm));
+                      const isMin = s.recommendedLengthCm === Math.min(...calculation.perString.map((x: any) => x.recommendedLengthCm));
+                      return (
+                        <tr key={s.index} className="border-b border-muted/50 hover:bg-muted/20 transition-colors">
+                          <td className="py-2.5 px-2 font-medium">
+                            #{s.index + 1}
+                          </td>
+                          <td className="py-2.5 px-2 text-center">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <div
+                                className="w-5 h-5 rounded-full border border-white shadow-sm shrink-0"
+                                style={{ backgroundColor: colorHex }}
+                              />
+                              <span className="text-xs text-muted-foreground uppercase">{s.colorLetter}</span>
+                            </div>
+                          </td>
+                          <td className="py-2.5 px-2 text-center">
+                            <span className="font-mono">{s.knotsTied}</span>
+                          </td>
+                          <td className="py-2.5 px-2 text-center">
+                            <span className="font-mono text-muted-foreground">{s.knotsOn}</span>
+                          </td>
+                          <td className="py-2.5 px-2 text-right">
+                            <span className={`font-bold ${isMax ? "text-primary" : isMin ? "text-muted-foreground" : ""}`}>
+                              {displayLength(s.recommendedLengthCm)}
+                            </span>
+                            {isMax && (
+                              <Badge variant="outline" className="ml-1.5 text-[10px] px-1 py-0 border-primary/30 text-primary">
+                                longest
+                              </Badge>
+                            )}
+                            {isMin && (
+                              <Badge variant="outline" className="ml-1.5 text-[10px] px-1 py-0">
+                                shortest
+                              </Badge>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Explanation */}
+              <p className="text-xs text-muted-foreground mt-4 leading-relaxed">
+                {calculation.explanation}
+              </p>
             </CardContent>
           </Card>
 
@@ -292,21 +342,9 @@ export default function StringCalculator() {
                     </p>
                   </div>
                 </div>
-                {learningData.personalRecommendation && (
-                  <div className="mt-4 p-3 rounded-lg bg-white/60 border border-amber-200">
-                    <div className="flex items-start gap-2">
-                      <History className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
-                      <div>
-                        <p className="text-sm font-medium text-amber-800">Personal Recommendation</p>
-                        <p className="text-sm text-amber-700 mt-1">
-                          Based on your past results, cut your strings to{" "}
-                          <strong>{displayLength(learningData.personalRecommendation)}</strong> for a{" "}
-                          {displayLength(lengthCm)} bracelet.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
+                <p className="text-xs text-muted-foreground mt-3">
+                  The per-string estimates above have been adjusted based on your past data. Keep logging your measurements to improve accuracy!
+                </p>
               </CardContent>
             </Card>
           )}
@@ -320,13 +358,13 @@ export default function StringCalculator() {
         </CardHeader>
         <CardContent className="space-y-3 text-sm text-muted-foreground">
           <p>
-            <strong className="text-foreground">How it works:</strong> We fetch the pattern's SVG from BraceletBook, count the total knots, and calculate how much string each knot consumes (~0.4cm per knot) plus your desired length and tie-off room.
+            <strong className="text-foreground">Per-string analysis:</strong> We parse the pattern's SVG from BraceletBook to count exactly how many knots each string ties vs. how many are tied on it. Strings that tie more knots need more thread because the working string wraps around the passive string.
           </p>
           <p>
-            <strong className="text-foreground">Learning from your data:</strong> When you log a completed bracelet with measurements (string cut length, final length, leftover), the calculator uses that data to give you personalized recommendations for the same pattern.
+            <strong className="text-foreground">Learning from your data:</strong> When you log a completed bracelet with measurements (string cut length, final length, leftover), the calculator adjusts future estimates for the same pattern. The more data you log, the more accurate it gets.
           </p>
           <p>
-            <strong className="text-foreground">Better too long than too short:</strong> The recommended length includes a safety margin. You can always trim excess, but running out of string mid-bracelet means starting over.
+            <strong className="text-foreground">Better too long than too short:</strong> The recommended lengths include a safety margin. You can always trim excess, but running out of string mid-bracelet means starting over.
           </p>
         </CardContent>
       </Card>
